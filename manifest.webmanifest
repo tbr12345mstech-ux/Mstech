@@ -1,0 +1,1 @@
+{"name": "MSTECH 상품 인식 & 판매글 (오프라인)", "short_name": "MSTECH 스캔", "start_url": ".", "display": "standalone", "background_color": "#ffffff", "theme_color": "#0a84ff", "icons": [{"src": "icon.svg", "sizes": "512x512", "type": "image/svg+xml"}]}
