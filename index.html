@@ -1,153 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MSTECH 상품 인식 & 판매글</title>
 
-<!doctype html><html lang="ko"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>MSTECH – 사진 → 제품 인식 & 판매글 (오프라인)</title>
-<link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="styles.css">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<meta name="theme-color" content="#0a84ff">
-<script>
-  window.needZXing = !('BarcodeDetector' in window);
-  if(window.needZXing){
-    const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@zxing/browser@latest';document.head.appendChild(s);
-  }
-</script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-</head><body>
-<div class="wrap">
-  <header><img src="./icon.svg" alt="M"><h1><span class="brand">MSTECH</span> 상품 인식 & 판매글</h1></header>
+  <style>
+    body { font-family: Pretendard, sans-serif; margin: 0; padding: 20px; background: #111; color: #fff; }
+    h1 { font-size: 22px; margin-bottom: 15px; }
+    button { padding: 12px; background: #00f0c8; border-radius: 10px; border: 0; font-size: 17px; margin-top: 10px; width: 100%; }
+    input, textarea { width: 100%; padding: 12px; border-radius: 10px; border: 0; margin-top: 10px; font-size: 16px; }
+    video, img { width: 100%; border-radius: 12px; margin-top: 12px; background: #000; }
+  </style>
 
-  <div class="card">
-    <div class="row">
-      <input id="file" type="file" accept="image/*" capture="environment">
-      <button id="btn-camera" class="btn">카메라 스캔</button>
-      <button id="btn-stop" class="btn secondary">중지</button>
-      <button id="btn-torch" class="btn secondary">손전등</button>
-    </div>
-    <div class="hint">바코드 인식 → 실패 시 자동 라벨 OCR</div>
-    <div class="status" id="status">대기 중</div>
-    <video id="video" playsinline muted></video>
-    <canvas id="canvas"></canvas>
-  </div>
+  <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+</head>
 
-  <div class="card">
-    <div class="grid2">
-      <div><label>바코드</label><input id="ean" placeholder="스캔 결과"></div>
-      <div><label>예상 색상</label><input id="color" value="Unknown"></div>
-    </div>
-    <label>모델/키워드 후보 <small class="mono">(OCR/정규식)</small></label>
-    <textarea id="cands" placeholder="후보가 여기에 표시됩니다."></textarea>
-    <div class="row" style="margin-top:10px">
-      <button id="btn-title" class="btn secondary">eBay Title 자동 생성</button>
-      <button id="btn-links" class="btn secondary">가격 빠른 조회 링크</button>
-    </div>
-  </div>
+<body>
+  <h1>MSTECH 상품 인식 & 판매글</h1>
 
-  <div class="card">
-    <h3 style="margin:6px 0 10px">판매 글 생성</h3>
-    <div class="grid2">
-      <div>
-        <label>KR 제목</label><input id="title-kr">
-        <label>KR 본문</label><textarea id="desc-kr"></textarea>
-      </div>
-      <div>
-        <label>EN Title</label><input id="title-en">
-        <label>EN Desc</label><textarea id="desc-en"></textarea>
-      </div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button id="btn-copy-kr" class="btn">복사(번개장터)</button>
-      <button id="btn-copy-en" class="btn secondary">복사(eBay)</button>
-    </div>
-  </div>
+  <button id="startScan">📷 카메라 스캔 시작</button>
+  <video id="video"></video>
 
-  <div class="footer">v1 • MSTECH 오프라인 스캐너</div>
-</div>
+  <h3>바코드</h3>
+  <input id="barcode" placeholder="바코드 자동 입력" readonly />
 
-<script>
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js'); }
-const $=s=>document.querySelector(s), statusEl=$('#status'), video=$('#video'), canvas=$('#canvas'), ctx=canvas.getContext('2d');
-let stream=null, scanning=false, zxingReader=null, currentTrack=null, torchOn=false;
-function setStatus(t){ statusEl.textContent=t; }
-function drawToCanvas(img){
-  const max=1280; let w=img.videoWidth||img.naturalWidth||img.width, h=img.videoHeight||img.naturalHeight||img.height;
-  const r=Math.max(w/max,h/max,1); w=Math.round(w/r); h=Math.round(h/r);
-  canvas.width=w; canvas.height=h; ctx.drawImage(img,0,0,w,h);
-  try{ const d=ctx.getImageData(0,0,w,h).data; let r0=0,g0=0,b0=0,n=0; for(let i=0;i<d.length;i+=80){ r0+=d[i]; g0+=d[i+1]; b0+=d[i+2]; n++; }
-    const avg=[r0/n|0,g0/n|0,b0/n|0], pal=[['Black',[20,20,20]],['Gray/Silver',[150,150,160]],['Red',[200,70,70]],['Blue',[70,110,200]],['Green',[60,160,90]],['White',[235,235,235]]];
-    let best='Unknown',bd=1e9; for(const [nm,c] of pal){ const dd=(c[0]-avg[0])**2+(c[1]-avg[1])**2+(c[2]-avg[2])**2; if(dd<bd){bd=dd;best=nm;} } $('#color').value=best;
-  }catch(e){}
-}
-async function startScan(){
-  try{
-    setStatus('카메라 열기...');
-    const constraints={ video:{ facingMode:{exact:'environment'}, width:{ideal:1920}, height:{ideal:1080} }, audio:false };
-    stream=await navigator.mediaDevices.getUserMedia(constraints).catch(_=>navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}));
-    video.srcObject=stream; await video.play(); scanning=true; currentTrack=stream.getVideoTracks()[0]; setStatus('스캔 중... 바코드를 프레임에 맞춰주세요'); requestAnimationFrame(loop);
-  }catch(e){ setStatus('카메라 실패: '+e.message+'\\n설정 > Safari > 카메라 허용'); }
-}
-function stopScan(){ scanning=false; try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; currentTrack=null; }
-$('#btn-camera').onclick=startScan; $('#btn-stop').onclick=stopScan;
-$('#btn-torch').onclick=async()=>{ if(!currentTrack) return; try{ torchOn=!torchOn; await currentTrack.applyConstraints({advanced:[{torch:torchOn}]}); }catch(e){ setStatus('손전등 제어 불가(기기 미지원)'); } };
-async function loop(){
-  if(!scanning) return; drawToCanvas(video);
-  try{
-    if('BarcodeDetector' in window){
-      const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','qr_code']});
-      const res=await det.detect(canvas); if(res && res.length){ const v=res[0].rawValue; $('#ean').value=v; setStatus('바코드: '+v); stopScan(); afterEAN(v); return; }
-    }else if(window.ZXing){
-      if(!zxingReader) zxingReader=new ZXing.BrowserMultiFormatReader();
-      const r=await zxingReader.decodeFromCanvas(canvas).catch(()=>null);
-      if(r && r.text){ const v=r.text; $('#ean').value=v; setStatus('바코드: '+v); stopScan(); afterEAN(v); return; }
-    }
-  }catch(e){}
-  requestAnimationFrame(loop);
-}
-$('#file').addEventListener('change',(e)=>{
-  const f=e.target.files&&e.target.files[0]; if(!f) return;
-  const img=new Image(); img.onload=()=>{ drawToCanvas(img); setStatus('이미지 로드됨 → 바코드 시도'); tryScanOnce(); };
-  img.onerror=()=>setStatus('이미지 로드 실패');
-  const url=URL.createObjectURL(f); img.src=url; setTimeout(()=>URL.revokeObjectURL(url),30000);
-});
-async function tryScanOnce(){
-  let code=null;
-  try{
-    if('BarcodeDetector' in window){
-      const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','qr_code']});
-      const res=await det.detect(canvas); if(res && res.length) code=res[0].rawValue;
-    }else if(window.ZXing){
-      if(!zxingReader) zxingReader=new ZXing.BrowserMultiFormatReader();
-      const r=await zxingReader.decodeFromCanvas(canvas).catch(()=>null); if(r && r.text) code=r.text;
-    }
-  }catch(e){}
-  if(code){ $('#ean').value=code; setStatus('바코드: '+code); afterEAN(code); return; }
-  setStatus('바코드 없음 → 라벨 OCR 실행 중...'); await runOCR();
-}
-async function runOCR(){
-  try{
-    const { data:{ text } } = await Tesseract.recognize(canvas, 'eng+kor', { logger: m=>{} });
-    const lines=text.split(/\\n+/).map(s=>s.trim()).filter(Boolean);
-    const pats=[/ST\\w{6,}/i,/WD\\w{4,}/i,/HGST\\w{2,}/i,/SAMSUNG\\w{2,}/i,/MODEL[:\\s-]*([A-Z0-9-]{3,})/i,/P\\/N[:\\s-]*([A-Z0-9-]{3,})/i,/DP\\/N[:\\s-]*([A-Z0-9-]{3,})/i,/SN[:\\s-]*([A-Z0-9-]{4,})/i,/2\\s?TB|1\\s?TB|4\\s?TB|500\\s?GB/i,/RPM\\s?\\d+\\.?\\d*K?/i];
-    const found=new Set(); for(const ln of lines){ pats.forEach(p=>{ const m=ln.match(p); if(m){ found.add((m[1]||m[0]).trim()); } }); }
-    const arr=[...found]; if(arr.length){ $('#cands').value=( $('#cands').value?$('#cands').value+'\\n':'' )+arr.join('\\n'); setStatus('OCR 후보 '+arr.length+'개'); buildTitles($('#ean').value||arr[0]||''); } else setStatus('OCR 결과 없음. 더 밝게/가까이 시도');
-  }catch(e){ setStatus('OCR 실패: '+e.message); }
-}
-function afterEAN(code){ $('#cands').value=( $('#cands').value?$('#cands').value+'\\n':'' )+'EAN '+code; buildTitles(code); }
-function buildTitles(code){
-  const kw=($('#cands').value||'').replace(/\\s+/g,' ').trim();
-  const en=(kw?kw+' ':'')+(code?'('+code+')':'');
-  $('#title-en').value=en.slice(0,80);
-  const kr=(kw?kw+' ':'')+(code?'바코드 '+code:'상품'); $('#title-kr').value=kr;
-  $('#desc-kr').value=[ code?('바코드: '+code):'바코드 없음', '상태: 중고(사진참조)', '직거래/택배 가능' ].join('\\n');
-  $('#desc-en').value=[ en||'Used item', 'Condition: Used (see photos).' ].join('\\n');
-}
-$('#btn-title').onclick=()=>{ buildTitles($('#ean').value.trim()); setStatus('제목 생성 완료'); };
-$('#btn-links').onclick=()=>{
-  const q=($('#ean').value.trim()||$('#cands').value.split(/\\n+/)[0]||'').trim(); if(!q) return alert('검색어가 없습니다.');
-  alert(['네이버 쇼핑 → https://search.shopping.naver.com/search/all?query='+encodeURIComponent(q),
-         '번개장터 → https://m.bunjang.co.kr/search/products?q='+encodeURIComponent(q),
-         'eBay → https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(q)].join('\\n'));
-};
-$('#btn-copy-kr').onclick=()=>{ const t='제목: '+$('#title-kr').value+'\\n\\n'+$('#desc-kr').value; navigator.clipboard.writeText(t); setStatus('번개장터 복사 완료'); };
-$('#btn-copy-en').onclick=()=>{ const t='Title: '+$('#title-en').value+'\\n\\n'+$('#desc-en').value; navigator.clipboard.writeText(t); setStatus('eBay용 복사 완료'); };
-</script>
-</body></html>
+  <h3>예상 색상</h3>
+  <input id="color" value="자동 감지 중..." readonly />
+
+  <h3>모델/키워드 후보</h3>
+  <textarea id="ocrText" rows="5" placeholder="OCR 텍스트"></textarea>
+
+  <script>
+    document.getElementById("startScan").onclick = () => {
+      Quagga.init({
+        inputStream: { name: "Live", type: "LiveStream", target: document.querySelector("#video") },
+        decoder: { readers: ["ean_reader", "code_128_reader"] }
+      }, err => {
+        if (err) return alert("카메라 접근 실패 ❌");
+        Quagga.start();
+      });
+
+      Quagga.onDetected(e => {
+        document.getElementById("barcode").value = e.codeResult.code;
+      });
+    };
+
+    // 이미지 업로드 시 OCR(모델 텍스트 인식)
+    document.body.insertAdjacentHTML("beforeend", `<input type="file" id="uploadImg" style="margin-top:20px" />`);
+    document.getElementById("uploadImg").onchange = e => {
+      let img = document.createElement("img");
+      img.src = URL.createObjectURL(e.target.files[0]);
+      document.body.appendChild(img);
+      Tesseract.recognize(img.src, "kor+eng").then(({ data }) => {
+        document.getElementById("ocrText").value = data.text;
+      });
+    };
+  </script>
+</body>
+</html>
