@@ -189,6 +189,122 @@ function setKeywords(list){
 }
 
 /* ----------------------- 1) 라이브 바코드 ----------------------- */
+<script>
+// ★ 기존 startScan() 지우고 아래로 교체
+async function startScan(){
+  try{
+    setText($('#statusCam'),'카메라 초기화 중…');
+
+    // 중앙 70%만 ROI로 스캔 → 배경/난반사 영향 감소
+    const target = videoEl;
+    await Quagga.init({
+      inputStream:{
+        type:"LiveStream",
+        target,
+        constraints:{
+          facingMode:"environment",
+          width:{ideal:1920}, height:{ideal:1080}
+        },
+        area:{ // 화면 중앙만 검사
+          top:"15%", right:"15%", left:"15%", bottom:"15%"
+        }
+      },
+      locator:{patchSize:"medium", halfSample:false},
+      locate:true,
+      frequency:8,
+      numOfWorkers:0,
+      decoder:{
+        readers:[
+          "ean_reader",        // 13자리 (음료캔 대부분)
+          "ean_8_reader",
+          "upc_reader",
+          "upc_e_reader",
+          "code_128_reader",
+          "code_39_reader"
+        ]
+      }
+    }, (err)=>{
+      if(err){ alert("카메라 실패: "+err); return; }
+      Quagga.start();
+      setText($('#statusCam'),'스캔 중… 바코드를 가로로 중앙에 두세요');
+    });
+
+    // 디버깅용(박스 그리기)
+    Quagga.offProcessed();
+    Quagga.onProcessed((res)=>{
+      // 실패시 메시지 업데이트만
+      if(!res || !res.boxes || !res.boxes.length){
+        setText($('#statusCam'),'바코드를 중앙에 가로로 맞춰주세요');
+      }
+    });
+
+    // 결과 콜백 (연속 2회 동일 코드면 확정)
+    let last='', hits=0, lock=false;
+    Quagga.offDetected();
+    Quagga.onDetected((res)=>{
+      if(lock) return;
+      const code = res?.codeResult?.code;
+      if(!code) return;
+      if(code===last) hits++; else { last=code; hits=1; }
+      if(hits>=2){
+        lock=true;
+        outBarcode.value = code;
+        setText($('#statusCam'),'인식함: '+code);
+        setKeywords(uniq([code,...getKeywords()]));
+        // 잠깐 멈췄다가 재개(중복 방지)
+        Quagga.pause(); setTimeout(()=>{try{Quagga.start(); lock=false;}catch(_){}}, 600);
+      }
+    });
+
+    // 3초 동안 못 읽으면 한 번 스틸샷으로 재시도(정지화상 디코드)
+    setTimeout(async ()=>{
+      if(!outBarcode.value){
+        const ok = await decodeFromStill(target);
+        if(ok) setText($('#statusCam'),'스틸샷 인식 완료');
+      }
+    }, 3000);
+
+  }catch(e){ alert('스캔 시작 오류: '+e); }
+}
+
+async function decodeFromStill(video){
+  try{
+    const c=document.createElement('canvas'),x=c.getContext('2d');
+    const w= Math.min(1280, video.videoWidth||1280);
+    const h= Math.min(720,  video.videoHeight||720);
+    c.width=w; c.height=h;
+    x.drawImage(video,0,0,w,h);
+
+    // 대비 올려서 선명하게
+    const img = x.getImageData(0,0,w,h);
+    for(let i=0;i<img.data.length;i+=4){
+      // 간단한 대비 강화
+      img.data[i]   = Math.min(255, img.data[i]  *1.2);
+      img.data[i+1] = Math.min(255, img.data[i+1]*1.2);
+      img.data[i+2] = Math.min(255, img.data[i+2]*1.2);
+    }
+    x.putImageData(img,0,0);
+
+    const dataUrl = c.toDataURL('image/jpeg',0.9);
+    const readers = [
+      "ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader","code_39_reader"
+    ];
+    const patch = ["large","medium"];
+    for(const p of patch){
+      const res = await new Promise(resolve=>{
+        Quagga.decodeSingle({
+          src:dataUrl, inputStream:{size:1000}, locate:true,
+          locator:{patchSize:p, halfSample:false},
+          decoder:{readers}
+        }, r=>resolve(r));
+      });
+      const code = res?.codeResult?.code;
+      if(code){ outBarcode.value = code; setKeywords(uniq([code,...getKeywords()])); return true; }
+    }
+  }catch(_){}
+  return false;
+}
+</script>
 const videoEl  = $('#video');
 const outBarcode = $('#outBarcode');
 
