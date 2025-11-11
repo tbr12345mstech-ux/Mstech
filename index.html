@@ -1,280 +1,195 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>MSTECH 상품 인식 & 판매글</title>
-<meta name="theme-color" content="#0a0f14"/>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>판매 자동화 2.5 — 회전 자동보정 + 사진/카메라</title>
+<link rel="preconnect" href="https://unpkg.com">
 <style>
-  :root{--bg:#0a0f14;--card:#111824;--muted:#89a;--accent:#1ee6c5;--text:#e9f1ff;}
-  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,apple sd gothic neo,Pretendard,Segoe UI,Arial,sans-serif}
-  .wrap{max-width:900px;margin:24px auto;padding:16px}
-  h1{font-size:28px;margin:4px 0 16px;letter-spacing:.2px}
-  .row{display:flex;gap:12px;flex-wrap:wrap}
-  .card{background:var(--card);border-radius:16px;padding:16px;border:1px solid #1c2533}
-  .btn{background:var(--accent);color:#00302a;border:none;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
-  .btn.secondary{background:#233142;color:#dbe9ff}
-  .btn.ghost{background:#182231;color:#cfe4ff;border:1px solid #2a394f}
-  .muted{color:var(--muted);font-size:13px}
-  input,textarea{width:100%;background:#0f1622;color:#e9f1ff;border:1px solid #2a394f;border-radius:12px;padding:12px}
-  textarea{min-height:110px;resize:vertical}
-  .grid{display:grid;gap:12px}
-  .two{grid-template-columns:1fr 1fr}
-  .pill{display:inline-block;background:#132033;border:1px solid #25354d;color:#cfe4ff;padding:6px 10px;border-radius:999px;font-size:12px}
-  video,canvas,.preview{width:100%;border-radius:14px;background:#000;display:block}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+:root{--bg:#0d1117;--panel:#0f172a;--muted:#9ca3af;--text:#e5e7eb;--mint:#22d3ee}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,Arial,sans-serif}
+header{padding:14px 16px;border-bottom:1px solid #1f2937}
+h1{margin:0 0 6px;font-size:22px}
+small{color:#9ca3af}
+main{max-width:960px;margin:0 auto;padding:14px}
+.tabs{display:flex;gap:8px;margin:10px 0}
+.tab{padding:10px 14px;border-radius:12px;border:1px solid #24304d;background:#0b1220;color:#e5e7eb;cursor:pointer}
+.tab.active{background:linear-gradient(90deg,#2563eb,#22d3ee);color:#fff}
+.panel{display:none;background:#0f172a;border:1px solid #1f2937;border-radius:16px;padding:12px}
+.panel.active{display:block}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{padding:10px 12px;border-radius:12px;border:1px solid #24304d;background:#0b1220;color:#e5e7eb;cursor:pointer}
+button.primary{background:linear-gradient(90deg,#2563eb,#22d3ee);color:#fff;border-color:#22d3ee}
+video, img{width:100%;max-width:520px;border-radius:12px;border:3px solid #22d3ee;background:#000}
+.status{margin-top:8px;color:#9ca3af;font-size:13px}
+input[type=text]{border-radius:12px;border:1px solid #24304d;background:#0b1220;color:#e5e7eb;padding:10px 12px;font-size:16px;flex:1;min-width:260px}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;background:#0ea5e9;color:#fff;font-size:12px;margin-left:6px}
+.hidden{display:none}
+canvas{display:none}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>MSTECH 상품 인식 & 판매글</h1>
-
-  <div class="row">
-    <div class="card" style="flex:1 1 520px">
-      <div class="toolbar">
-        <button id="btnStart" class="btn">📷 카메라 스캔 시작</button>
-        <button id="btnStop" class="btn secondary">정지</button>
-        <span class="pill">OCR 폴백 ON · 오프라인 동작</span>
-      </div>
-
-      <video id="video" playsinline muted></video>
-      <div class="muted" style="margin-top:8px">
-        바코드를 화면 중앙 가로방향에 두고 <b>20~30cm</b>에서 <b>1초 고정</b>하세요.
-      </div>
-
-      <div class="grid two" style="margin-top:12px">
-        <div>
-          <label class="muted">바코드</label>
-          <div class="row">
-            <input id="barcode" placeholder="자동 입력…" />
-            <button id="btnCopyCode" class="btn ghost">복사</button>
-          </div>
-        </div>
-        <div>
-          <label class="muted">예상 색상</label>
-          <input id="color" value="자동 감지…" />
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="flex:1 1 320px">
-      <div class="grid">
-        <label class="muted">사진 업로드/촬영 (바코드+문자 인식)</label>
-        <input id="file" type="file" accept="image/*" capture="environment" />
-        <canvas id="canvas" class="preview" hidden></canvas>
-      </div>
-
-      <div class="grid" style="margin-top:12px">
-        <label class="muted">인식 결과 · 키워드 (OCR)</label>
-        <textarea id="ocrBox" placeholder="로고/문자 OCR 후보…"></textarea>
-        <span class="muted" id="engineNote">엔진: ZXing(실시간) + Tesseract.js(ko+eng)</span>
-      </div>
-    </div>
+<header>
+  <h1>판매 자동화 2.5 <span class="badge">회전 자동보정 + ZXing</span></h1>
+  <small>사진은 0/90/180/270° + 리샘플/대비강화로 여러 번 시도 · 카메라 스캔도 지원</small>
+</header>
+<main>
+  <div class="tabs">
+    <div class="tab active" data-tab="photo">사진으로 인식</div>
+    <div class="tab" data-tab="camera">카메라로 인식</div>
   </div>
 
-  <div class="card" style="margin-top:16px">
-    <div class="grid two">
-      <div>
-        <label class="muted">판매 제목 (KR)</label>
-        <input id="titleKr" placeholder="자동 생성 제목…" />
-      </div>
-      <div>
-        <label class="muted">eBay Title (EN)</label>
-        <input id="titleEn" placeholder="Auto-generated eBay title…" />
-      </div>
-      <div>
-        <label class="muted">판매 본문 (KR)</label>
-        <textarea id="descKr" placeholder="상태/구성/메모 등"></textarea>
-      </div>
-      <div>
-        <label class="muted">Description (EN)</label>
-        <textarea id="descEn" placeholder="Auto-generated brief description…"></textarea>
-      </div>
+  <!-- Photo panel -->
+  <section class="panel active" id="photo">
+    <div class="row">
+      <input id="file" type="file" accept="image/*" capture="environment">
+      <input id="out1" type="text" placeholder="결과(자동 입력)…">
+      <button id="copy1">복사</button>
     </div>
-    <div class="toolbar" style="margin-top:10px">
-      <button id="btnGen" class="btn">판매글 자동 생성</button>
-      <button id="btnCopyAll" class="btn ghost">복사(번개장터)</button>
+    <img id="preview" alt="preview" class="hidden"/>
+    <div id="pstatus" class="status">팁: 바코드가 사진의 70~90% 차지하도록 가까이 찍어주세요.</div>
+    <canvas id="work"></canvas>
+  </section>
+
+  <!-- Camera panel -->
+  <section class="panel" id="camera">
+    <div class="row">
+      <button id="start" class="primary">카메라 스캔 시작</button>
+      <button id="stop">정지</button>
+      <button id="flip">회전</button>
+      <input id="out2" type="text" placeholder="결과(자동 입력)…">
+      <button id="copy2">복사</button>
     </div>
-    <div id="status" class="muted" style="margin-top:8px">상태: 대기 중…</div>
-  </div>
+    <video id="video" playsinline muted></video>
+    <div id="cstatus" class="status">바코드를 가로로 맞추고 1초 정지.</div>
+  </section>
+</main>
 
-</div>
+<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js"></script>
+<script>
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(a=>a.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+}));
 
-<!-- ZXing (barcode) + Tesseract (OCR) CDN -->
-<script type="module">
-import { BrowserMultiFormatReader, NotFoundException } from 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/index.js';
-import Tesseract from 'https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js';
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+async function copyText(id, statusEl){
+  const v = document.getElementById(id).value || '';
+  try{ await navigator.clipboard.writeText(v); statusEl.textContent='복사됨 ✅'; }catch(e){ statusEl.textContent='복사 실패'; }
+}
 
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
+// Photo decode with rotation & enhancement
 const file = document.getElementById('file');
-const barcodeEl = document.getElementById('barcode');
-const colorEl = document.getElementById('color');
-const ocrBox = document.getElementById('ocrBox');
-const statusEl = document.getElementById('status');
-const btnStart = document.getElementById('btnStart');
-const btnStop = document.getElementById('btnStop');
-const btnCopyCode = document.getElementById('btnCopyCode');
-const btnGen = document.getElementById('btnGen');
-const btnCopyAll = document.getElementById('btnCopyAll');
-const titleKr = document.getElementById('titleKr');
-const titleEn = document.getElementById('titleEn');
-const descKr = document.getElementById('descKr');
-const descEn = document.getElementById('descEn');
+const preview = document.getElementById('preview');
+const work = document.getElementById('work');
+const pstatus = document.getElementById('pstatus');
+const out1 = document.getElementById('out1');
+document.getElementById('copy1').onclick=()=>copyText('out1', pstatus);
 
-let stream = null, zxing = null, loopFlag = false;
-const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
-const copy = (t)=> navigator.clipboard.writeText(t||'').then(()=>toast('복사 완료 ✅')).catch(()=>toast('복사 실패 ❌'));
-function toast(msg){ statusEl.textContent = msg; }
+const reader = new ZXingBrowser.BrowserBarcodeReader();
 
-/* 평균색상 추정 */
-function averageColorFromVideo() {
-  try{
-    const w=160,h=120; canvas.width=w; canvas.height=h;
-    const ctx=canvas.getContext('2d'); ctx.drawImage(video,0,0,w,h);
-    const {data}=ctx.getImageData(0,0,w,h);
-    let r=0,g=0,b=0,c=0; for(let i=0;i<data.length;i+=4){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; c++; }
-    r=Math.round(r/c); g=Math.round(g/c); b=Math.round(b/c);
-    const max=Math.max(r,g,b); const color=(max===r?'Red':max===g?'Green':'Blue');
-    return `${color} (${r},${g},${b})`;
-  }catch{ return 'Unknown'; }
-}
+file.addEventListener('change', async () => {
+  const f = file.files[0]; if(!f) return;
+  out1.value='';
+  preview.classList.remove('hidden');
+  preview.src = URL.createObjectURL(f);
+  await new Promise(r=>preview.onload=r);
 
-/* OCR */
-async function runOCR(img) {
-  try{
-    const worker = await Tesseract.createWorker('kor+eng', 1);
-    const { data:{ text } } = await worker.recognize(img);
-    await worker.terminate();
-    return text.replace(/\s+\n/g,'\n').trim();
-  }catch{ return ''; }
-}
-
-/* 텍스트 생성 */
-function generateTexts({code, colorGuess, ocrText}) {
-  const brand = (ocrText.match(/coca[\s-]*cola|dell|samsung|apple|lg|seagate|western\s*digital|wd|nike|adidas|sony|panasonic|lenovo|hp|hynix|sandisk/i)||[''])[0];
-  const cleanBrand = brand ? brand.replace(/\s+/g,' ').toUpperCase() : '';
-  const keywords = (ocrText||'').replace(/[^\p{L}\p{N}\s\-\/]/gu,' ').split(/\s+/).filter(w=>w.length>2).slice(0,10).join(' ');
-  const colorWord = (colorGuess||'Unknown').split(' ')[0];
-
-  titleKr.value = [cleanBrand?`[${cleanBrand}]`:null, keywords||null, code?`(바코드:${code})`:null].filter(Boolean).join(' ').slice(0,80);
-  titleEn.value = [(cleanBrand||'MSTECH'), keywords?` ${keywords}`:'', code?` [Barcode ${code}]`:''].join('').slice(0,80);
-
-  descKr.value = [
-    `• 예상 색상: ${colorGuess||'Unknown'}`,
-    code?`• 바코드: ${code}`:null,
-    `• 키워드: ${keywords||'N/A'}`,
-    '', '상태: 사진 참고 / 기본 점검 완료', '구성품: 본품 기준', '거래: 번개장터/직거래/택배'
-  ].filter(Boolean).join('\n');
-
-  descEn.value = [
-    `• Est. color: ${colorWord}`,
-    code?`• Barcode: ${code}`:null,
-    `• Keywords: ${keywords||'N/A'}`,
-    '', 'Condition: See photos. Basic check done.', 'Includes: Unit only', 'Shipping: Domestic/Intl'
-  ].filter(Boolean).join('\n');
-}
-
-/* 라이브 스캔 */
-async function startCamera() {
-  try{
-    if(stream) stopCamera();
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:{exact:'environment'}, width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:30,max:60} }, audio:false
-    });
-    video.srcObject = stream; await video.play();
-    colorEl.value = averageColorFromVideo();
-    toast('카메라 시작. 바코드를 중앙에 맞춰주세요.');
-    loopFlag = true; if(!zxing) zxing = new BrowserMultiFormatReader();
-    scanLoop();
-  }catch{ toast('카메라 권한을 허용해주세요. (설정 > 브라우저 > 카메라)'); }
-}
-
-async function scanLoop(){
-  while(loopFlag){
-    try{
-      const result = await zxing.decodeOnceFromVideoDevice(undefined, video);
-      if(result?.getText){
-        const code = result.getText(); barcodeEl.value = code;
-        colorEl.value = averageColorFromVideo(); toast(`바코드 인식 성공: ${code} ✅`);
-        await sleep(600);
-      }
-    }catch(err){
-      if(!(err instanceof NotFoundException)) await sleep(200);
-    }
-    if(!barcodeEl.value){ // OCR 폴백
-      await sleep(1500);
-      try{
-        const w=640,h=360; canvas.width=w; canvas.height=h;
-        const ctx=canvas.getContext('2d'); ctx.drawImage(video,0,0,w,h);
-        const text = await runOCR(canvas);
-        if(text){
-          const m = text.match(/\b\d{12,14}\b/);
-          if(m && !barcodeEl.value){ barcodeEl.value = m[0]; toast(`OCR 바코드 후보: ${m[0]}`); }
-          ocrBox.value = text.slice(0,1500);
+  pstatus.textContent='분석 중… (회전/리샘플/대비강화 시도)';
+  const rotations = [0, 90, 180, 270];
+  const scales = [1.0, 0.75, 0.5];
+  for (const rot of rotations){
+    for (const sc of scales){
+      for (const enhance of [false, true]){
+        const res = await tryDecode(preview, rot, sc, enhance);
+        if (res){
+          out1.value = res; pstatus.textContent='감지됨: '+res; beep(); return;
         }
-      }catch{}
+        await sleep(15);
+      }
     }
   }
-}
-
-function stopCamera(){
-  loopFlag = false;
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  if(video.srcObject) video.srcObject=null;
-}
-
-/* 이미지 업로드 인식 */
-file.addEventListener('change', async (e)=>{
-  const f = e.target.files?.[0]; if(!f) return;
-  const url = URL.createObjectURL(f); const img = new Image();
-  await new Promise(res=>{ img.onload=res; img.src=url; });
-  const w=900,h=Math.round(img.height*(w/img.width));
-  canvas.width=w; canvas.height=h; canvas.hidden=false;
-  const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0,w,h);
-
-  // ZXing 시도
-  try{
-    const { HTMLCanvasElementLuminanceSource } = await import('https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/browser/HTMLCanvasElementLuminanceSource.js');
-    const { HybridBinarizer } = await import('https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/common/HybridBinarizer.js');
-    const { BinaryBitmap } = await import('https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/core/BinaryBitmap.js');
-    const { MultiFormatReader } = await import('https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/core/MultiFormatReader.js');
-    const { DecodeHintType } = await import('https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/core/DecodeHintType.js');
-    const { BarcodeFormat } = await import('https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/core/BarcodeFormat.js');
-
-    const src = new HTMLCanvasElementLuminanceSource(canvas);
-    const bin = new HybridBinarizer(src);
-    const bmp = new BinaryBitmap(bin);
-    const reader = new MultiFormatReader();
-    reader.setHints(new Map([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.EAN_13,BarcodeFormat.EAN_8,BarcodeFormat.CODE_128,BarcodeFormat.UPC_A]]]));
-    const res = reader.decode(bmp);
-    if(res?.getText){ barcodeEl.value = res.getText(); toast(`이미지 바코드: ${res.getText()}`); }
-  }catch{}
-
-  // OCR
-  const text = await runOCR(canvas);
-  ocrBox.value = text.slice(0,1500);
-  const m = text.match(/\b\d{12,14}\b/);
-  if(m && !barcodeEl.value){ barcodeEl.value = m[0]; toast(`OCR 바코드 후보: ${m[0]}`); }
-  colorEl.value = 'Unknown';
+  pstatus.textContent='❌ 바코드를 찾지 못했습니다. 더 가까이/선명하게 찍어서 다시 시도하세요.';
 });
 
-/* 버튼 */
-btnStart.onclick = startCamera;
-btnStop.onclick = ()=>{ stopCamera(); toast('정지'); };
-btnCopyCode.onclick = ()=>copy(barcodeEl.value||'');
-btnGen.onclick = ()=>{
-  generateTexts({ code: barcodeEl.value?.trim(), colorGuess: colorEl.value?.trim(), ocrText: ocrBox.value||'' });
-  toast('판매 글 자동 생성 완료 ✅');
-};
-btnCopyAll.onclick = ()=>{
-  const block = [
-    `제목: ${titleKr.value}`, '', descKr.value, '', `eBay Title: ${titleEn.value}`, descEn.value?`\n\n${descEn.value}`:''
-  ].join('\n');
-  copy(block);
-};
+async function tryDecode(img, rot=0, sc=1, enhance=false){
+  const w = Math.max(64, Math.floor(img.naturalWidth*sc));
+  const h = Math.max(64, Math.floor(img.naturalHeight*sc));
+  const cw = (rot%180===0)? w : h;
+  const ch = (rot%180===0)? h : w;
+  work.width = cw; work.height = ch;
+  const ctx = work.getContext('2d');
+  ctx.save();
+  ctx.translate(cw/2, ch/2);
+  ctx.rotate(rot*Math.PI/180);
+  ctx.drawImage(img, -w/2, -h/2, w, h);
+  ctx.restore();
+  if (enhance){
+    const imageData = ctx.getImageData(0,0,cw,ch);
+    const data = imageData.data;
+    const c = 1.25, m = 128;
+    for(let i=0;i<data.length;i+=4){
+      data[i] = Math.max(0, Math.min(255, (data[i]-m)*c + m));
+      data[i+1] = Math.max(0, Math.min(255, (data[i+1]-m)*c + m));
+      data[i+2] = Math.max(0, Math.min(255, (data[i+2]-m)*c + m));
+    }
+    ctx.putImageData(imageData,0,0);
+  }
+  const url = work.toDataURL("image/png");
+  try{
+    const r = await reader.decodeFromImageUrl(url);
+    return r.getText();
+  }catch(e){ return null; }
+}
 
-window.addEventListener('beforeunload', stopCamera);
+// Camera decode
+const video = document.getElementById('video');
+const cstatus = document.getElementById('cstatus');
+const out2 = document.getElementById('out2');
+document.getElementById('copy2').onclick=()=>copyText('out2', cstatus);
+let controls=null, cstream=null, mreader=null, useFront=false;
+
+async function startCam(){
+  if(controls) return;
+  cstatus.textContent='카메라 여는 중…';
+  const facing = useFront ? 'user' : 'environment';
+  try{
+    cstream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:facing}}, audio:false});
+  }catch(e){
+    cstream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing}}, audio:false});
+  }
+  video.srcObject = cstream; await video.play();
+  mreader = new ZXingBrowser.BrowserMultiFormatReader();
+  controls = await mreader.decodeFromVideoElement(video, (result, err)=>{
+    if(result && result.getText()){
+      const txt = result.getText();
+      if(out2.value!==txt){ out2.value=txt; cstatus.textContent='감지됨: '+txt; beep(); }
+    }
+  });
+  cstatus.textContent='인식 준비 완료. 가로 방향으로 1초 정지.';
+}
+function stopCam(){
+  if(controls){ try{controls.stop()}catch{} controls=null; }
+  if(mreader){ try{mreader.reset()}catch{} mreader=null; }
+  if(cstream){ cstream.getTracks().forEach(t=>t.stop()); cstream=null; }
+  cstatus.textContent='정지됨';
+}
+document.getElementById('start').onclick=startCam;
+document.getElementById('stop').onclick=stopCam;
+document.getElementById('flip').onclick=()=>{ useFront=!useFront; stopCam(); startCam(); };
+
+// tiny beep
+const ac = new (window.AudioContext||window.webkitAudioContext)();
+function beep(){
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.connect(g); g.connect(ac.destination); o.frequency.value=880; g.gain.value=0.001; o.start();
+  g.gain.exponentialRampToValueAtTime(0.4, ac.currentTime+0.02);
+  setTimeout(()=>{ g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+0.08); o.stop(ac.currentTime+0.1); }, 80);
+}
 </script>
 </body>
 </html>
