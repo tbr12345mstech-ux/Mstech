@@ -1,1169 +1,130 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>MSTECH 상품 인식 & 판매글 - 최종</title>
-<!-- Quagga2 (바코드) & Tesseract (OCR) CDN -->
-<script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
-<script src="https://unpkg.com/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MSTECH 상품 인식 & 판매글 · OCR 우선 v6.0</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0d0f13">
 <style>
-  :root{
-    --bg:#0f1115;--card:#151924;--ink:#e8eef7;--muted:#9db0c9;--accent:#28dec4;--accent-ink:#0b2530;
-    --danger:#ff5d6c;--ok:#56e39f;--yellow:#ffd166;--border:#202637
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;
-    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale
-  }
-  .wrap{max-width:980px;margin:24px auto;padding:0 16px}
-  h1{font-size:28px;margin:0 0 18px;letter-spacing:.2px}
-  .brand{font-weight:800}
-  .grid{display:grid;gap:14px}
-  .card{
-    background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 16px
-  }
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  button, .btn{
-    background:var(--accent);color:#012; border:0;border-radius:12px;padding:12px 16px;
-    font-weight:700;cursor:pointer;transition:.15s;display:inline-flex;gap:8px;align-items:center
-  }
-  button.secondary{background:#213043;color:var(--ink)}
-  button.ghost{background:#111826;border:1px solid var(--border);color:var(--ink)}
-  button:disabled{opacity:.55;cursor:not-allowed}
-  input[type="text"],input[type="number"],textarea{
-    width:100%;background:#0b1220;border:1px solid var(--border);border-radius:12px;
-    padding:12px 12px;color:var(--ink);font-size:15px;outline:none
-  }
-  textarea{min-height:120px;resize:vertical}
-  .help{color:var(--muted);font-size:13px}
-  .pill{display:inline-block;background:#0e1b2a;border:1px solid var(--border);color:var(--ink);padding:6px 10px;border-radius:999px;font-size:13px;margin:4px 6px 0 0}
-  .preview{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-  video,canvas,.imgprev{width:100%;height:100%;object-fit:cover;display:block}
-  .kv{display:grid;grid-template-columns:140px 1fr;gap:8px;margin-top:8px}
-  .kv .k{color:var(--muted)}
-  .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .chip{background:#0e1a28;border:1px solid var(--border);padding:6px 10px;border-radius:999px}
-  .copy{background:#0e1a28;border:1px dashed var(--border);padding:6px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
-  .ok{color:var(--ok)} .bad{color:var(--danger)} .warn{color:var(--yellow)}
+:root{--bg:#0d0f13; --panel:#141820; --ink:#e8f0ff; --muted:#9db0cc; --pri:#1ed3c6;}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Apple SD Gothic Neo, Noto Sans KR, sans-serif;}
+.wrap{max-width:860px; margin:0 auto; padding:20px 14px 80px}
+h1{font-size:28px; margin:12px 0 18px;} .badge{padding:4px 8px; border-radius:8px; background:#1b2330; color:#9db0cc; font-size:12px; margin-left:8px}
+.panel{background:var(--panel); border:1px solid #222a36; border-radius:16px; padding:14px; margin:14px 0;}
+.row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+.btn{border:0; border-radius:12px; padding:14px 16px; font-weight:700; background:var(--pri); color:#042826; cursor:pointer}
+.btn.sec{background:#1f2937; color:#e8f0ff} .btn.small{padding:8px 10px; border-radius:10px; font-weight:600}
+label.uploader{display:block; width:100%; padding:12px 14px; background:#0f131a; border:1px dashed #2c3647; color:#9db0cc; border-radius:12px; text-align:center; cursor:pointer}
+input[type=file]{display:none}
+.grid{display:grid; gap:12px} @media (min-width:840px){ .grid.two{grid-template-columns:1fr 1fr} }
+.box{background:#0f131a; border:1px solid #202938; border-radius:14px; padding:10px}
+canvas, video{width:100%; border-radius:12px; background:#0a0c10}
+.input{width:100%; padding:12px; background:#0d1219; border:1px solid #203046; color:#e8f0ff; border-radius:10px; font-size:15px}
+.kv{display:grid; grid-template-columns:120px 1fr; gap:8px; align-items:center}
+.k{color:#9db0cc} .tags{display:flex; gap:8px; flex-wrap:wrap} .tag{background:#192233; color:#bcd; padding:6px 10px; border-radius:999px; font-size:13px}
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:18px; background:#10161f; color:#cfe7ff; border:1px solid #243248; padding:10px 14px; border-radius:10px; display:none}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1><span class="brand">MSTECH</span> 상품 인식 & 판매글</h1>
-
-    <!-- 1) 라이브 카메라 바코드 스캔 -->
-    <section class="card grid">
-      <div class="row">
-        <button id="btnStart"><span>📷</span> 카메라 스캔 시작</button>
-        <button class="secondary" id="btnStop">정지</button>
-        <span class="help" id="camHint">바코드를 가로로 중앙에 두고 20–30cm 거리에서 잠깐 고정</span>
-      </div>
-      <div class="preview"><video id="video" autoplay playsinline muted></video></div>
-
-      <div class="grid">
-        <label>바코드</label>
-        <div class="row" style="gap:8px">
-          <input id="outBarcode" class="mono" placeholder="바코드 자동 입력" />
-          <button class="ghost" id="copyBarcode">복사</button>
-        </div>
-        <small class="help" id="statusCam">대기 중…</small>
-      </div>
-    </section>
-
-    <!-- 2) 사진 업로드/촬영 + 이미지 기반 인식(바코드 & OCR & 색상)  -->
-    <section class="card grid">
-      <div class="row">
-        <input type="file" id="imgFile" accept="image/*" capture="environment" />
-        <button id="btnFromImg" class="ghost">사진에서 인식(바코드+문자)</button>
-      </div>
-      <div class="preview"><img id="imgPrev" class="imgprev" alt=""></div>
-
-      <div class="grid">
-        <div class="kv"><div class="k">예상 색상</div><input id="outColor" readonly placeholder="자동 감지 중…"/></div>
-        <div class="kv"><div class="k">모델/키워드 후보</div>
-          <div>
-            <div id="kwList" class="chips"></div>
-            <div class="row" style="margin-top:8px">
-              <button class="ghost" id="copyKeywords">키워드 복사</button>
-              <button class="ghost" id="clearKeywords">지우기</button>
-            </div>
-          </div>
-        </div>
-        <small class="help">Tip: 라벨·모델명·스펙이 정면에 보이도록 찍으면 인식률이 올라가요.</small>
-      </div>
-    </section>
-
-    <!-- 3) 가격 빠른 조회 링크 -->
-    <section class="card grid">
-      <div class="row">
-        <button id="btnNaver" class="ghost">네이버 중고가 검색</button>
-        <button id="btnBunjang" class="ghost">번개장터 검색</button>
-        <button id="btnEbay" class="ghost">eBay 시세 검색</button>
-      </div>
-      <small class="help">현재 인식된 키워드(또는 바코드)로 새 탭에서 검색합니다.</small>
-    </section>
-
-    <!-- 4) 판매 글 생성 -->
-    <section class="card grid">
-      <div class="grid">
-        <label>메모/구성품/상태</label>
-        <textarea id="memo" placeholder="예) 사용감 보통, 케이블 포함, 테스트 완료, 초기화 완료 등"></textarea>
-      </div>
-      <div class="row">
-        <button id="btnMakeKorean">번개장터 판매글 생성</button>
-        <button class="secondary" id="btnMakeEbay">eBay 타이틀 생성</button>
-      </div>
-      <div class="grid">
-        <label>KR 제목</label>
-        <input id="outKRTitle" />
-        <label>KR 본문</label>
-        <textarea id="outKRBody"></textarea>
-        <label>EN Title</label>
-        <input id="outENTitle" />
-        <div class="row">
-          <button class="ghost" data-copy="#outKRTitle">KR 제목 복사</button>
-          <button class="ghost" data-copy="#outKRBody">KR 본문 복사</button>
-          <button class="ghost" data-copy="#outENTitle">EN Title 복사</button>
-        </div>
-      </div>
-    </section>
-
-    <p class="help">© MSTECH · 모든 처리는 로컬에서 수행(개인정보/사진 서버 전송 없음)</p>
+<div class="wrap">
+  <h1>MSTECH 상품 인식 & 판매글 <span class="badge">OCR 우선 · 오프라인 동작</span></h1>
+  <div class="panel">
+    <div class="row">
+      <button class="btn" id="btnCam">📷 카메라 스캔 시작</button>
+      <button class="btn sec" id="btnStop" disabled>정지</button>
+    </div>
+    <div class="grid two" style="margin-top:10px">
+      <div class="box"><video id="video" playsinline muted></video></div>
+      <div class="box"><canvas id="frame" height="360"></canvas></div>
+    </div>
+    <div class="grid two" style="margin-top:10px">
+      <label class="uploader"><input type="file" id="file" accept="image/*" capture="environment">📁 사진 선택 or 촬영하여 OCR</label>
+      <button class="btn sec" id="btnSnap">현재 프레임 OCR</button>
+    </div>
   </div>
 
-<script>
-/* ----------------------- 공통 유틸 ----------------------- */
-const $ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
-const setText = (el, txt) => { el.textContent = txt };
-const copyText = (txt) => navigator.clipboard?.writeText(txt||'');
-const sanitize = s => (s||'').replace(/\s+/g,' ').trim();
-const uniq = arr => [...new Set(arr.filter(Boolean))];
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
-function avgColor(img){
-  try{
-    const c=document.createElement('canvas'),x=c.getContext('2d');
-    const w = c.width = Math.min(320, img.naturalWidth||img.videoWidth||320);
-    const h = c.height= Math.min(240, img.naturalHeight||img.videoHeight||240);
-    x.drawImage(img,0,0,w,h);
-    const d = x.getImageData(0,0,w,h).data; let r=0,g=0,b=0, n=0;
-    for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];n++}
-    r=Math.round(r/n); g=Math.round(g/n); b=Math.round(b/n);
-    function toName(r,g,b){
-      // 매우 라이트한 색상 이름 매핑(간단)
-      const max=Math.max(r,g,b), min=Math.min(r,g,b);
-      const l=(max+min)/2;
-      if(l<35) return 'Black/Dark';
-      if(l>220) return 'White';
-      if(r>g&&r>b) return 'Red';
-      if(g>r&&g>b) return 'Green';
-      if(b>r&&b>g) return 'Blue';
-      if(r>200&&g>200) return 'Yellow';
-      return 'Gray/Silver';
-    }
-    return {rgb:`rgb(${r},${g},${b})`, name:toName(r,g,b)};
-  }catch(e){return {rgb:'',name:'Unknown'}}
-}
-function buildQuery(){
-  const kws = getKeywords().slice(0,6).join(' ');
-  return sanitize(kws || $('#outBarcode').value);
-}
-function openSearch(base){
-  const q = encodeURIComponent(buildQuery());
-  window.open(base+q,'_blank');
-}
-function getKeywords(){
-  return $$('#kwList .chip').map(x=>x.textContent.trim());
-}
-function setKeywords(list){
-  const box = $('#kwList'); box.innerHTML='';
-  uniq(list).slice(0,20).forEach(w=>{
-    const s=document.createElement('span'); s.className='chip'; s.textContent=w;
-    s.title='클릭하면 삭제'; s.onclick=()=>s.remove();
-    box.appendChild(s);
-  });
-}
-
-/* ----------------------- 1) 라이브 바코드 ----------------------- */
-<script>
-// ★ 기존 startScan() 지우고 아래로 교체
-async function startScan(){
-  try{
-    setText($('#statusCam'),'카메라 초기화 중…');
-
-    // 중앙 70%만 ROI로 스캔 → 배경/난반사 영향 감소
-    const target = videoEl;
-    await Quagga.init({
-      inputStream:{
-        type:"LiveStream",
-        target,
-        constraints:{
-          facingMode:"environment",
-          width:{ideal:1920}, height:{ideal:1080}
-        },
-        area:{ // 화면 중앙만 검사
-          top:"15%", right:"15%", left:"15%", bottom:"15%"
-        }
-      },
-      locator:{patchSize:"medium", halfSample:false},
-      locate:true,
-      frequency:8,
-      numOfWorkers:0,
-      decoder:{
-        readers:[
-          "ean_reader",        // 13자리 (음료캔 대부분)
-          "ean_8_reader",
-          "upc_reader",
-          "upc_e_reader",
-          "code_128_reader",
-          "code_39_reader"
-        ]
-      }
-    }, (err)=>{
-      if(err){ alert("카메라 실패: "+err); return; }
-      Quagga.start();
-      setText($('#statusCam'),'스캔 중… 바코드를 가로로 중앙에 두세요');
-    });
-
-    // 디버깅용(박스 그리기)
-    Quagga.offProcessed();
-    Quagga.onProcessed((res)=>{
-      // 실패시 메시지 업데이트만
-      if(!res || !res.boxes || !res.boxes.length){
-        setText($('#statusCam'),'바코드를 중앙에 가로로 맞춰주세요');
-      }
-    });
-
-    // 결과 콜백 (연속 2회 동일 코드면 확정)
-    let last='', hits=0, lock=false;
-    Quagga.offDetected();
-    Quagga.onDetected((res)=>{
-      if(lock) return;
-      const code = res?.codeResult?.code;
-      if(!code) return;
-      if(code===last) hits++; else { last=code; hits=1; }
-      if(hits>=2){
-        lock=true;
-        outBarcode.value = code;
-        setText($('#statusCam'),'인식함: '+code);
-        setKeywords(uniq([code,...getKeywords()]));
-        // 잠깐 멈췄다가 재개(중복 방지)
-        Quagga.pause(); setTimeout(()=>{try{Quagga.start(); lock=false;}catch(_){}}, 600);
-      }
-    });
-
-    // 3초 동안 못 읽으면 한 번 스틸샷으로 재시도(정지화상 디코드)
-    setTimeout(async ()=>{
-      if(!outBarcode.value){
-        const ok = await decodeFromStill(target);
-        if(ok) setText($('#statusCam'),'스틸샷 인식 완료');
-      }
-    }, 3000);
-
-  }catch(e){ alert('스캔 시작 오류: '+e); }
-}
-
-async function decodeFromStill(video){
-  try{
-    const c=document.createElement('canvas'),x=c.getContext('2d');
-    const w= Math.min(1280, video.videoWidth||1280);
-    const h= Math.min(720,  video.videoHeight||720);
-    c.width=w; c.height=h;
-    x.drawImage(video,0,0,w,h);
-
-    // 대비 올려서 선명하게
-    const img = x.getImageData(0,0,w,h);
-    for(let i=0;i<img.data.length;i+=4){
-      // 간단한 대비 강화
-      img.data[i]   = Math.min(255, img.data[i]  *1.2);
-      img.data[i+1] = Math.min(255, img.data[i+1]*1.2);
-      img.data[i+2] = Math.min(255, img.data[i+2]*1.2);
-    }
-    x.putImageData(img,0,0);
-
-    const dataUrl = c.toDataURL('image/jpeg',0.9);
-    const readers = [
-      "ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader","code_39_reader"
-    ];
-    const patch = ["large","medium"];
-    for(const p of patch){
-      const res = await new Promise(resolve=>{
-        Quagga.decodeSingle({
-          src:dataUrl, inputStream:{size:1000}, locate:true,
-          locator:{patchSize:p, halfSample:false},
-          decoder:{readers}
-        }, r=>resolve(r));
-      });
-      const code = res?.codeResult?.code;
-      if(code){ outBarcode.value = code; setKeywords(uniq([code,...getKeywords()])); return true; }
-    }
-  }catch(_){}
-  return false;
-}
-</script>
-const videoEl  = $('#video');
-const outBarcode = $('#outBarcode');
-
-async function startScan(){
-  try{
-    setText($('#statusCam'), '카메라 초기화 중…');
-    await Quagga.init({
-      inputStream:{
-        name:"Live", type:"LiveStream", target:videoEl,
-        constraints:{facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}}
-      },
-      locator:{patchSize:"large", halfSample:false},
-      numOfWorkers:0, frequency:5,
-      decoder:{readers:["ean_reader","ean_8_reader","code_128_reader","code_39_reader","upc_reader","upc_e_reader"]},
-      locate:true
-    }, err=>{ if(err){ alert("카메라 실패: "+err); return } Quagga.start(); setText($('#statusCam'),'스캔 중… 바코드를 프레임 중앙에 맞춰주세요') });
-
-    Quagga.offDetected();
-    Quagga.onDetected(res=>{
-      const code = res?.codeResult?.code;
-      if(!code) return;
-      outBarcode.value = code;
-      setText($('#statusCam'), '인식함: '+code);
-      // 연속 중복 방지
-      Quagga.pause(); setTimeout(()=>{try{Quagga.start()}catch(_){}} ,800);
-      // 바코드 숫자도 키워드로 추가
-      setKeywords(uniq([code, ...getKeywords()]));
-    })
-  }catch(e){
-    alert('스캔 시작 오류: '+e);
-  }
-}
-function stopScan(){ try{Quagga.stop()}catch(_){ } setText($('#statusCam'), '정지됨'); }
-
-$('#btnStart').onclick = startScan;
-$('#btnStop').onclick  = stopScan;
-$('#copyBarcode').onclick = ()=>copyText(outBarcode.value);
-
-/* ----------------------- 2) 사진에서 인식 ----------------------- */
-const imgPrev = $('#imgPrev');
-$('#imgFile').onchange = async (e)=>{
-  const f = e.target.files?.[0]; if(!f) return;
-  imgPrev.src = URL.createObjectURL(f);
-  await sleep(100);
-  const avg = avgColor(imgPrev);
-  $('#outColor').value = avg.name + (avg.rgb? ` (${avg.rgb})`:'');
-}
-
-$('#btnFromImg').onclick = async ()=>{
-  if(!imgPrev.src){ alert('사진을 먼저 선택/촬영하세요'); return }
-  // 2-1) 정지화상 바코드
-  setText($('#statusCam'),'사진 바코드 분석 중…');
-  try{
-    await new Promise((resolve)=>{
-      Quagga.decodeSingle({
-        src: imgPrev.src,
-        numOfWorkers:0,
-        inputStream:{size:800},
-        decoder:{readers:["ean_reader","ean_8_reader","code_128_reader","code_39_reader","upc_reader","upc_e_reader"]},
-        locate:true
-      }, (res)=>{
-        const code = res && res.codeResult && res.codeResult.code;
-        if(code){ outBarcode.value = code; setKeywords(uniq([code, ...getKeywords()])); }
-        resolve();
-      });
-    });
-  }catch(_){/* 무시 */}
-
-  // 2-2) OCR (라벨 텍스트 → 모델/부품번호 후보 뽑기)
-  setText($('#statusCam'),'OCR 인식 중…');
-  try{
-    const o = await Tesseract.recognize(imgPrev.src, 'eng', { logger: m=>{/* console.log(m) */} });
-    const raw = (o.data?.text||'')
-      .replace(/[|]/g,'I').replace(/[^\w\-\s./]/g,' ')
-      .split(/\s+/).map(s=>s.trim()).filter(Boolean);
-
-    // 모델/부품 번호처럼 보이는 패턴
-    const modelish = raw.filter(w=>{
-      if(w.length<4) return false;
-      if(/^\d{4,}$/.test(w)) return false; // 순수 숫자 제외(바코드랑 중복)
-      return /[A-Z].*\d|\d.*[A-Z]/.test(w); // 영문+숫자 혼용
-    });
-
-    // 상표/일반단어는 가볍게 필터링
-    const blacklist = ['SERIAL','MODEL','MADE','DATE','VOID','WARRANTY','LABEL','REMOVED','BROKEN','CERTIFIED','ENTERPRISE','PLUS','BY','THE','AND','WITH','FOR','OF'];
-    const cleaned = modelish
-      .map(w=>w.replace(/[().,:;'"`]/g,'').toUpperCase())
-      .filter(w=>w.length<=24 && !blacklist.includes(w));
-
-    // 최종 키워드 후보 세팅
-    setKeywords(uniq([ ...cleaned.slice(0,12), outBarcode.value || '' ]));
-    setText($('#statusCam'),'사진 인식 완료');
-  }catch(e){
-    setText($('#statusCam'),'OCR 실패'); console.warn(e);
-  }
-
-  // 2-3) 색상 추정(이미 선택 시 평균색 계산)
-  const avg = avgColor(imgPrev);
-  $('#outColor').value = avg.name + (avg.rgb? ` (${avg.rgb})`:'');
-};
-
-$('#copyKeywords').onclick = ()=>{
-  copyText(getKeywords().join(' '));
-};
-$('#clearKeywords').onclick = ()=> setKeywords([]);
-
-/* ----------------------- 3) 빠른 검색 링크 ----------------------- */
-$('#btnNaver').onclick   = ()=>openSearch('https://search.shopping.naver.com/search/all?query=');
-$('#btnBunjang').onclick = ()=>openSearch('https://m.bunjang.co.kr/search/products?q=');
-$('#btnEbay').onclick    = ()=>openSearch('https://www.ebay.com/sch/i.html?_nkw=');
-
-/* ----------------------- 4) 판매글 생성 ----------------------- */
-function makeTexts(){
-  const kws = getKeywords(); const kwLine = kws.join(' ');
-  const color = $('#outColor').value || 'Unknown';
-  const barcode = $('#outBarcode').value;
-  const memo = sanitize($('#memo').value);
-
-  // KR 제목 & 본문
-  const krTitle = sanitize([ kwLine || '상품', color ].join(' | '));
-  const krBody =
-`✅ 제품 정보
-- 주요 키워드: ${kwLine || '-'}
-- 색상/외관: ${color}
-- 바코드: ${barcode || '-'}
-
-✅ 상태/메모
-${memo || '- 사용감/상태를 적어주세요'}
-
-🧪 간단 테스트 후 판매하며, 직거래/택배 둘 다 가능해요.
-문의 주시면 실사진/추가정보 바로 드립니다.`;
-
-  // EN Title (eBay)
-  const enTitle = sanitize((kwLine || 'Item') + (color ? ` ${color}` : '')).slice(0,80);
-
-  return {krTitle, krBody, enTitle}
-}
-
-$('#btnMakeKorean').onclick = ()=>{
-  const {krTitle, krBody} = makeTexts();
-  $('#outKRTitle').value = krTitle;
-  $('#outKRBody').value  = krBody;
-};
-$('#btnMakeEbay').onclick = ()=>{
-  const {enTitle} = makeTexts();
-  $('#outENTitle').value = enTitle;
-};
-
-$$('button[data-copy]').forEach(btn=>{
-  btn.onclick=()=>{
-    const sel = btn.getAttribute('data-copy');
-    const v = $(sel)?.value || '';
-    copyText(v);
-    btn.textContent='복사됨';
-    setTimeout(()=>btn.textContent='복사',900);
-  }
-});
-</script>
-</body>
-</html>
-<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>MSTECH 상품 인식 & 판매글 - 최종</title>
-<!-- Quagga2 (바코드) & Tesseract (OCR) CDN -->
-<script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
-<script src="https://unpkg.com/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
-<style>
-  :root{
-    --bg:#0f1115;--card:#151924;--ink:#e8eef7;--muted:#9db0c9;--accent:#28dec4;--accent-ink:#0b2530;
-    --danger:#ff5d6c;--ok:#56e39f;--yellow:#ffd166;--border:#202637
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;
-    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale
-  }
-  .wrap{max-width:980px;margin:24px auto;padding:0 16px}
-  h1{font-size:28px;margin:0 0 18px;letter-spacing:.2px}
-  .brand{font-weight:800}
-  .grid{display:grid;gap:14px}
-  .card{
-    background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 16px
-  }
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  button, .btn{
-    background:var(--accent);color:#012; border:0;border-radius:12px;padding:12px 16px;
-    font-weight:700;cursor:pointer;transition:.15s;display:inline-flex;gap:8px;align-items:center
-  }
-  button.secondary{background:#213043;color:var(--ink)}
-  button.ghost{background:#111826;border:1px solid var(--border);color:var(--ink)}
-  button:disabled{opacity:.55;cursor:not-allowed}
-  input[type="text"],input[type="number"],textarea{
-    width:100%;background:#0b1220;border:1px solid var(--border);border-radius:12px;
-    padding:12px 12px;color:var(--ink);font-size:15px;outline:none
-  }
-  textarea{min-height:120px;resize:vertical}
-  .help{color:var(--muted);font-size:13px}
-  .pill{display:inline-block;background:#0e1b2a;border:1px solid var(--border);color:var(--ink);padding:6px 10px;border-radius:999px;font-size:13px;margin:4px 6px 0 0}
-  .preview{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-  video,canvas,.imgprev{width:100%;height:100%;object-fit:cover;display:block}
-  .kv{display:grid;grid-template-columns:140px 1fr;gap:8px;margin-top:8px}
-  .kv .k{color:var(--muted)}
-  .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .chip{background:#0e1a28;border:1px solid var(--border);padding:6px 10px;border-radius:999px}
-  .copy{background:#0e1a28;border:1px dashed var(--border);padding:6px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
-  .ok{color:var(--ok)} .bad{color:var(--danger)} .warn{color:var(--yellow)}
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <h1><span class="brand">MSTECH</span> 상품 인식 & 판매글</h1>
-
-    <!-- 1) 라이브 카메라 바코드 스캔 -->
-    <section class="card grid">
-      <div class="row">
-        <button id="btnStart"><span>📷</span> 카메라 스캔 시작</button>
-        <button class="secondary" id="btnStop">정지</button>
-        <span class="help" id="camHint">바코드를 가로로 중앙에 두고 20–30cm 거리에서 잠깐 고정</span>
+  <div class="panel">
+    <h3 style="margin:4px 0 8px">인식 결과</h3>
+    <div class="grid two">
+      <div class="box kv"><div class="k">예상 색상</div><input class="input" id="colorGuess" readonly placeholder="자동 감지 중..."></div>
+      <div class="box kv"><div class="k">바코드</div><input class="input" id="barcode" placeholder="있을 경우 자동/수동 입력"></div>
+    </div>
+    <div class="box" style="margin-top:10px">
+      <div class="k">모델/키워드 후보</div><div class="tags" id="tagBox"></div>
+      <textarea class="input" id="rawText" rows="4" placeholder="OCR 텍스트가 여기에 표시됩니다."></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn small" id="btnCopy">텍스트 복사</button>
+        <button class="btn small" id="btnRefine">모델/키워드 추출 다시</button>
       </div>
-      <div class="preview"><video id="video" autoplay playsinline muted></video></div>
-
-      <div class="grid">
-        <label>바코드</label>
-        <div class="row" style="gap:8px">
-          <input id="outBarcode" class="mono" placeholder="바코드 자동 입력" />
-          <button class="ghost" id="copyBarcode">복사</button>
-        </div>
-        <small class="help" id="statusCam">대기 중…</small>
-      </div>
-    </section>
-
-    <!-- 2) 사진 업로드/촬영 + 이미지 기반 인식(바코드 & OCR & 색상)  -->
-    <section class="card grid">
-      <div class="row">
-        <input type="file" id="imgFile" accept="image/*" capture="environment" />
-        <button id="btnFromImg" class="ghost">사진에서 인식(바코드+문자)</button>
-      </div>
-      <div class="preview"><img id="imgPrev" class="imgprev" alt=""></div>
-
-      <div class="grid">
-        <div class="kv"><div class="k">예상 색상</div><input id="outColor" readonly placeholder="자동 감지 중…"/></div>
-        <div class="kv"><div class="k">모델/키워드 후보</div>
-          <div>
-            <div id="kwList" class="chips"></div>
-            <div class="row" style="margin-top:8px">
-              <button class="ghost" id="copyKeywords">키워드 복사</button>
-              <button class="ghost" id="clearKeywords">지우기</button>
-            </div>
-          </div>
-        </div>
-        <small class="help">Tip: 라벨·모델명·스펙이 정면에 보이도록 찍으면 인식률이 올라가요.</small>
-      </div>
-    </section>
-
-    <!-- 3) 가격 빠른 조회 링크 -->
-    <section class="card grid">
-      <div class="row">
-        <button id="btnNaver" class="ghost">네이버 중고가 검색</button>
-        <button id="btnBunjang" class="ghost">번개장터 검색</button>
-        <button id="btnEbay" class="ghost">eBay 시세 검색</button>
-      </div>
-      <small class="help">현재 인식된 키워드(또는 바코드)로 새 탭에서 검색합니다.</small>
-    </section>
-
-    <!-- 4) 판매 글 생성 -->
-    <section class="card grid">
-      <div class="grid">
-        <label>메모/구성품/상태</label>
-        <textarea id="memo" placeholder="예) 사용감 보통, 케이블 포함, 테스트 완료, 초기화 완료 등"></textarea>
-      </div>
-      <div class="row">
-        <button id="btnMakeKorean">번개장터 판매글 생성</button>
-        <button class="secondary" id="btnMakeEbay">eBay 타이틀 생성</button>
-      </div>
-      <div class="grid">
-        <label>KR 제목</label>
-        <input id="outKRTitle" />
-        <label>KR 본문</label>
-        <textarea id="outKRBody"></textarea>
-        <label>EN Title</label>
-        <input id="outENTitle" />
-        <div class="row">
-          <button class="ghost" data-copy="#outKRTitle">KR 제목 복사</button>
-          <button class="ghost" data-copy="#outKRBody">KR 본문 복사</button>
-          <button class="ghost" data-copy="#outENTitle">EN Title 복사</button>
-        </div>
-      </div>
-    </section>
-
-    <p class="help">© MSTECH · 모든 처리는 로컬에서 수행(개인정보/사진 서버 전송 없음)</p>
+    </div>
+    <div class="grid two" style="margin-top:10px">
+      <button class="btn" id="btnSearch">실거래가 자동 조회(추천)</button>
+      <button class="btn sec" id="btnTitle">eBay Title 자동 생성</button>
+    </div>
   </div>
 
-<script>
-/* ----------------------- 공통 유틸 ----------------------- */
-const $ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
-const setText = (el, txt) => { el.textContent = txt };
-const copyText = (txt) => navigator.clipboard?.writeText(txt||'');
-const sanitize = s => (s||'').replace(/\s+/g,' ').trim();
-const uniq = arr => [...new Set(arr.filter(Boolean))];
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
-function avgColor(img){
-  try{
-    const c=document.createElement('canvas'),x=c.getContext('2d');
-    const w = c.width = Math.min(320, img.naturalWidth||img.videoWidth||320);
-    const h = c.height= Math.min(240, img.naturalHeight||img.videoHeight||240);
-    x.drawImage(img,0,0,w,h);
-    const d = x.getImageData(0,0,w,h).data; let r=0,g=0,b=0, n=0;
-    for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];n++}
-    r=Math.round(r/n); g=Math.round(g/n); b=Math.round(b/n);
-    function toName(r,g,b){
-      // 매우 라이트한 색상 이름 매핑(간단)
-      const max=Math.max(r,g,b), min=Math.min(r,g,b);
-      const l=(max+min)/2;
-      if(l<35) return 'Black/Dark';
-      if(l>220) return 'White';
-      if(r>g&&r>b) return 'Red';
-      if(g>r&&g>b) return 'Green';
-      if(b>r&&b>g) return 'Blue';
-      if(r>200&&g>200) return 'Yellow';
-      return 'Gray/Silver';
-    }
-    return {rgb:`rgb(${r},${g},${b})`, name:toName(r,g,b)};
-  }catch(e){return {rgb:'',name:'Unknown'}}
-}
-function buildQuery(){
-  const kws = getKeywords().slice(0,6).join(' ');
-  return sanitize(kws || $('#outBarcode').value);
-}
-function openSearch(base){
-  const q = encodeURIComponent(buildQuery());
-  window.open(base+q,'_blank');
-}
-function getKeywords(){
-  return $$('#kwList .chip').map(x=>x.textContent.trim());
-}
-function setKeywords(list){
-  const box = $('#kwList'); box.innerHTML='';
-  uniq(list).slice(0,20).forEach(w=>{
-    const s=document.createElement('span'); s.className='chip'; s.textContent=w;
-    s.title='클릭하면 삭제'; s.onclick=()=>s.remove();
-    box.appendChild(s);
-  });
-}
-
-/* ----------------------- 1) 라이브 바코드 ----------------------- */
-const videoEl  = $('#video');
-const outBarcode = $('#outBarcode');
-
-async function startScan(){
-  try{
-    setText($('#statusCam'), '카메라 초기화 중…');
-    await Quagga.init({
-      inputStream:{
-        name:"Live", type:"LiveStream", target:videoEl,
-        constraints:{facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}}
-      },
-      locator:{patchSize:"large", halfSample:false},
-      numOfWorkers:0, frequency:5,
-      decoder:{readers:["ean_reader","ean_8_reader","code_128_reader","code_39_reader","upc_reader","upc_e_reader"]},
-      locate:true
-    }, err=>{ if(err){ alert("카메라 실패: "+err); return } Quagga.start(); setText($('#statusCam'),'스캔 중… 바코드를 프레임 중앙에 맞춰주세요') });
-
-    Quagga.offDetected();
-    Quagga.onDetected(res=>{
-      const code = res?.codeResult?.code;
-      if(!code) return;
-      outBarcode.value = code;
-      setText($('#statusCam'), '인식함: '+code);
-      // 연속 중복 방지
-      Quagga.pause(); setTimeout(()=>{try{Quagga.start()}catch(_){}} ,800);
-      // 바코드 숫자도 키워드로 추가
-      setKeywords(uniq([code, ...getKeywords()]));
-    })
-  }catch(e){
-    alert('스캔 시작 오류: '+e);
-  }
-}
-function stopScan(){ try{Quagga.stop()}catch(_){ } setText($('#statusCam'), '정지됨'); }
-
-$('#btnStart').onclick = startScan;
-$('#btnStop').onclick  = stopScan;
-$('#copyBarcode').onclick = ()=>copyText(outBarcode.value);
-
-/* ----------------------- 2) 사진에서 인식 ----------------------- */
-const imgPrev = $('#imgPrev');
-$('#imgFile').onchange = async (e)=>{
-  const f = e.target.files?.[0]; if(!f) return;
-  imgPrev.src = URL.createObjectURL(f);
-  await sleep(100);
-  const avg = avgColor(imgPrev);
-  $('#outColor').value = avg.name + (avg.rgb? ` (${avg.rgb})`:'');
-}
-
-$('#btnFromImg').onclick = async ()=>{
-  if(!imgPrev.src){ alert('사진을 먼저 선택/촬영하세요'); return }
-  // 2-1) 정지화상 바코드
-  setText($('#statusCam'),'사진 바코드 분석 중…');
-  try{
-    await new Promise((resolve)=>{
-      Quagga.decodeSingle({
-        src: imgPrev.src,
-        numOfWorkers:0,
-        inputStream:{size:800},
-        decoder:{readers:["ean_reader","ean_8_reader","code_128_reader","code_39_reader","upc_reader","upc_e_reader"]},
-        locate:true
-      }, (res)=>{
-        const code = res && res.codeResult && res.codeResult.code;
-        if(code){ outBarcode.value = code; setKeywords(uniq([code, ...getKeywords()])); }
-        resolve();
-      });
-    });
-  }catch(_){/* 무시 */}
-
-  // 2-2) OCR (라벨 텍스트 → 모델/부품번호 후보 뽑기)
-  setText($('#statusCam'),'OCR 인식 중…');
-  try{
-    const o = await Tesseract.recognize(imgPrev.src, 'eng', { logger: m=>{/* console.log(m) */} });
-    const raw = (o.data?.text||'')
-      .replace(/[|]/g,'I').replace(/[^\w\-\s./]/g,' ')
-      .split(/\s+/).map(s=>s.trim()).filter(Boolean);
-
-    // 모델/부품 번호처럼 보이는 패턴
-    const modelish = raw.filter(w=>{
-      if(w.length<4) return false;
-      if(/^\d{4,}$/.test(w)) return false; // 순수 숫자 제외(바코드랑 중복)
-      return /[A-Z].*\d|\d.*[A-Z]/.test(w); // 영문+숫자 혼용
-    });
-
-    // 상표/일반단어는 가볍게 필터링
-    const blacklist = ['SERIAL','MODEL','MADE','DATE','VOID','WARRANTY','LABEL','REMOVED','BROKEN','CERTIFIED','ENTERPRISE','PLUS','BY','THE','AND','WITH','FOR','OF'];
-    const cleaned = modelish
-      .map(w=>w.replace(/[().,:;'"`]/g,'').toUpperCase())
-      .filter(w=>w.length<=24 && !blacklist.includes(w));
-
-    // 최종 키워드 후보 세팅
-    setKeywords(uniq([ ...cleaned.slice(0,12), outBarcode.value || '' ]));
-    setText($('#statusCam'),'사진 인식 완료');
-  }catch(e){
-    setText($('#statusCam'),'OCR 실패'); console.warn(e);
-  }
-
-  // 2-3) 색상 추정(이미 선택 시 평균색 계산)
-  const avg = avgColor(imgPrev);
-  $('#outColor').value = avg.name + (avg.rgb? ` (${avg.rgb})`:'');
-};
-
-$('#copyKeywords').onclick = ()=>{
-  copyText(getKeywords().join(' '));
-};
-$('#clearKeywords').onclick = ()=> setKeywords([]);
-
-/* ----------------------- 3) 빠른 검색 링크 ----------------------- */
-$('#btnNaver').onclick   = ()=>openSearch('https://search.shopping.naver.com/search/all?query=');
-$('#btnBunjang').onclick = ()=>openSearch('https://m.bunjang.co.kr/search/products?q=');
-$('#btnEbay').onclick    = ()=>openSearch('https://www.ebay.com/sch/i.html?_nkw=');
-
-/* ----------------------- 4) 판매글 생성 ----------------------- */
-function makeTexts(){
-  const kws = getKeywords(); const kwLine = kws.join(' ');
-  const color = $('#outColor').value || 'Unknown';
-  const barcode = $('#outBarcode').value;
-  const memo = sanitize($('#memo').value);
-
-  // KR 제목 & 본문
-  const krTitle = sanitize([ kwLine || '상품', color ].join(' | '));
-  const krBody =
-`✅ 제품 정보
-- 주요 키워드: ${kwLine || '-'}
-- 색상/외관: ${color}
-- 바코드: ${barcode || '-'}
-
-✅ 상태/메모
-${memo || '- 사용감/상태를 적어주세요'}
-
-🧪 간단 테스트 후 판매하며, 직거래/택배 둘 다 가능해요.
-문의 주시면 실사진/추가정보 바로 드립니다.`;
-
-  // EN Title (eBay)
-  const enTitle = sanitize((kwLine || 'Item') + (color ? ` ${color}` : '')).slice(0,80);
-
-  return {krTitle, krBody, enTitle}
-}
-
-$('#btnMakeKorean').onclick = ()=>{
-  const {krTitle, krBody} = makeTexts();
-  $('#outKRTitle').value = krTitle;
-  $('#outKRBody').value  = krBody;
-};
-$('#btnMakeEbay').onclick = ()=>{
-  const {enTitle} = makeTexts();
-  $('#outENTitle').value = enTitle;
-};
-
-$$('button[data-copy]').forEach(btn=>{
-  btn.onclick=()=>{
-    const sel = btn.getAttribute('data-copy');
-    const v = $(sel)?.value || '';
-    copyText(v);
-    btn.textContent='복사됨';
-    setTimeout(()=>btn.textContent='복사',900);
-  }
-});
-</script>
-</body>
-</html>
-<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>MSTECH 상품 인식 & 판매글 - 최종</title>
-<!-- Quagga2 (바코드) & Tesseract (OCR) CDN -->
-<script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
-<script src="https://unpkg.com/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
-<style>
-  :root{
-    --bg:#0f1115;--card:#151924;--ink:#e8eef7;--muted:#9db0c9;--accent:#28dec4;--accent-ink:#0b2530;
-    --danger:#ff5d6c;--ok:#56e39f;--yellow:#ffd166;--border:#202637
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;
-    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale
-  }
-  .wrap{max-width:980px;margin:24px auto;padding:0 16px}
-  h1{font-size:28px;margin:0 0 18px;letter-spacing:.2px}
-  .brand{font-weight:800}
-  .grid{display:grid;gap:14px}
-  .card{
-    background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 16px
-  }
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  button, .btn{
-    background:var(--accent);color:#012; border:0;border-radius:12px;padding:12px 16px;
-    font-weight:700;cursor:pointer;transition:.15s;display:inline-flex;gap:8px;align-items:center
-  }
-  button.secondary{background:#213043;color:var(--ink)}
-  button.ghost{background:#111826;border:1px solid var(--border);color:var(--ink)}
-  button:disabled{opacity:.55;cursor:not-allowed}
-  input[type="text"],input[type="number"],textarea{
-    width:100%;background:#0b1220;border:1px solid var(--border);border-radius:12px;
-    padding:12px 12px;color:var(--ink);font-size:15px;outline:none
-  }
-  textarea{min-height:120px;resize:vertical}
-  .help{color:var(--muted);font-size:13px}
-  .pill{display:inline-block;background:#0e1b2a;border:1px solid var(--border);color:var(--ink);padding:6px 10px;border-radius:999px;font-size:13px;margin:4px 6px 0 0}
-  .preview{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-  video,canvas,.imgprev{width:100%;height:100%;object-fit:cover;display:block}
-  .kv{display:grid;grid-template-columns:140px 1fr;gap:8px;margin-top:8px}
-  .kv .k{color:var(--muted)}
-  .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .chip{background:#0e1a28;border:1px solid var(--border);padding:6px 10px;border-radius:999px}
-  .copy{background:#0e1a28;border:1px dashed var(--border);padding:6px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
-  .ok{color:var(--ok)} .bad{color:var(--danger)} .warn{color:var(--yellow)}
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <h1><span class="brand">MSTECH</span> 상품 인식 & 판매글</h1>
-
-    <!-- 1) 라이브 카메라 바코드 스캔 -->
-    <section class="card grid">
-      <div class="row">
-        <button id="btnStart"><span>📷</span> 카메라 스캔 시작</button>
-        <button class="secondary" id="btnStop">정지</button>
-        <span class="help" id="camHint">바코드를 가로로 중앙에 두고 20–30cm 거리에서 잠깐 고정</span>
-      </div>
-      <div class="preview"><video id="video" autoplay playsinline muted></video></div>
-
-      <div class="grid">
-        <label>바코드</label>
-        <div class="row" style="gap:8px">
-          <input id="outBarcode" class="mono" placeholder="바코드 자동 입력" />
-          <button class="ghost" id="copyBarcode">복사</button>
-        </div>
-        <small class="help" id="statusCam">대기 중…</small>
-      </div>
-    </section>
-
-    <!-- 2) 사진 업로드/촬영 + 이미지 기반 인식(바코드 & OCR & 색상)  -->
-    <section class="card grid">
-      <div class="row">
-        <input type="file" id="imgFile" accept="image/*" capture="environment" />
-        <button id="btnFromImg" class="ghost">사진에서 인식(바코드+문자)</button>
-      </div>
-      <div class="preview"><img id="imgPrev" class="imgprev" alt=""></div>
-
-      <div class="grid">
-        <div class="kv"><div class="k">예상 색상</div><input id="outColor" readonly placeholder="자동 감지 중…"/></div>
-        <div class="kv"><div class="k">모델/키워드 후보</div>
-          <div>
-            <div id="kwList" class="chips"></div>
-            <div class="row" style="margin-top:8px">
-              <button class="ghost" id="copyKeywords">키워드 복사</button>
-              <button class="ghost" id="clearKeywords">지우기</button>
-            </div>
-          </div>
-        </div>
-        <small class="help">Tip: 라벨·모델명·스펙이 정면에 보이도록 찍으면 인식률이 올라가요.</small>
-      </div>
-    </section>
-
-    <!-- 3) 가격 빠른 조회 링크 -->
-    <section class="card grid">
-      <div class="row">
-        <button id="btnNaver" class="ghost">네이버 중고가 검색</button>
-        <button id="btnBunjang" class="ghost">번개장터 검색</button>
-        <button id="btnEbay" class="ghost">eBay 시세 검색</button>
-      </div>
-      <small class="help">현재 인식된 키워드(또는 바코드)로 새 탭에서 검색합니다.</small>
-    </section>
-
-    <!-- 4) 판매 글 생성 -->
-    <section class="card grid">
-      <div class="grid">
-        <label>메모/구성품/상태</label>
-        <textarea id="memo" placeholder="예) 사용감 보통, 케이블 포함, 테스트 완료, 초기화 완료 등"></textarea>
-      </div>
-      <div class="row">
-        <button id="btnMakeKorean">번개장터 판매글 생성</button>
-        <button class="secondary" id="btnMakeEbay">eBay 타이틀 생성</button>
-      </div>
-      <div class="grid">
-        <label>KR 제목</label>
-        <input id="outKRTitle" />
-        <label>KR 본문</label>
-        <textarea id="outKRBody"></textarea>
-        <label>EN Title</label>
-        <input id="outENTitle" />
-        <div class="row">
-          <button class="ghost" data-copy="#outKRTitle">KR 제목 복사</button>
-          <button class="ghost" data-copy="#outKRBody">KR 본문 복사</button>
-          <button class="ghost" data-copy="#outENTitle">EN Title 복사</button>
-        </div>
-      </div>
-    </section>
-
-    <p class="help">© MSTECH · 모든 처리는 로컬에서 수행(개인정보/사진 서버 전송 없음)</p>
+  <div class="panel">
+    <h3 style="margin:4px 0 8px">판매 글 생성</h3>
+    <div class="grid two">
+      <textarea class="input" id="krTitle" rows="2" placeholder="KR 제목"></textarea>
+      <textarea class="input" id="enTitle" rows="2" placeholder="EN Title"></textarea>
+    </div>
+    <div class="grid two" style="margin-top:10px">
+      <textarea class="input" id="krDesc" rows="6" placeholder="KR 본문"></textarea>
+      <textarea class="input" id="enDesc" rows="6" placeholder="EN Description"></textarea>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn small" id="btnGen">자동 생성</button>
+      <button class="btn small" id="btnCopyKR">KR 복사</button>
+      <button class="btn small" id="btnCopyEN">EN 복사</button>
+    </div>
   </div>
-
+</div>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 <script>
-/* ----------------------- 공통 유틸 ----------------------- */
-const $ = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
-const setText = (el, txt) => { el.textContent = txt };
-const copyText = (txt) => navigator.clipboard?.writeText(txt||'');
-const sanitize = s => (s||'').replace(/\s+/g,' ').trim();
-const uniq = arr => [...new Set(arr.filter(Boolean))];
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
-function avgColor(img){
-  try{
-    const c=document.createElement('canvas'),x=c.getContext('2d');
-    const w = c.width = Math.min(320, img.naturalWidth||img.videoWidth||320);
-    const h = c.height= Math.min(240, img.naturalHeight||img.videoHeight||240);
-    x.drawImage(img,0,0,w,h);
-    const d = x.getImageData(0,0,w,h).data; let r=0,g=0,b=0, n=0;
-    for(let i=0;i<d.length;i+=4){r+=d[i];g+=d[i+1];b+=d[i+2];n++}
-    r=Math.round(r/n); g=Math.round(g/n); b=Math.round(b/n);
-    function toName(r,g,b){
-      // 매우 라이트한 색상 이름 매핑(간단)
-      const max=Math.max(r,g,b), min=Math.min(r,g,b);
-      const l=(max+min)/2;
-      if(l<35) return 'Black/Dark';
-      if(l>220) return 'White';
-      if(r>g&&r>b) return 'Red';
-      if(g>r&&g>b) return 'Green';
-      if(b>r&&b>g) return 'Blue';
-      if(r>200&&g>200) return 'Yellow';
-      return 'Gray/Silver';
-    }
-    return {rgb:`rgb(${r},${g},${b})`, name:toName(r,g,b)};
-  }catch(e){return {rgb:'',name:'Unknown'}}
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js'); }
+const video=document.getElementById('video'), canvas=document.getElementById('frame'), ctx=canvas.getContext('2d');
+const colorGuess=document.getElementById('colorGuess'), barcodeInput=document.getElementById('barcode'), tagBox=document.getElementById('tagBox'), rawText=document.getElementById('rawText');
+let stream=null, rafId=null, scanning=false;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',1500) }
+async function startCam(){
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}); video.srcObject=stream; await video.play(); scanning=true; document.getElementById('btnStop').disabled=false; loop();
+  }catch(e){ console.error(e); toast('카메라 권한을 허용해주세요.'); }
 }
-function buildQuery(){
-  const kws = getKeywords().slice(0,6).join(' ');
-  return sanitize(kws || $('#outBarcode').value);
-}
-function openSearch(base){
-  const q = encodeURIComponent(buildQuery());
-  window.open(base+q,'_blank');
-}
-function getKeywords(){
-  return $$('#kwList .chip').map(x=>x.textContent.trim());
-}
-function setKeywords(list){
-  const box = $('#kwList'); box.innerHTML='';
-  uniq(list).slice(0,20).forEach(w=>{
-    const s=document.createElement('span'); s.className='chip'; s.textContent=w;
-    s.title='클릭하면 삭제'; s.onclick=()=>s.remove();
-    box.appendChild(s);
-  });
-}
+function stopCam(){ scanning=false; document.getElementById('btnStop').disabled=true; if(rafId) cancelAnimationFrame(rafId); if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null;}}
+document.getElementById('btnCam').onclick=startCam; document.getElementById('btnStop').onclick=stopCam;
+function loop(){ if(!scanning) return; const w=canvas.clientWidth||640, h=Math.round(w*3/4); canvas.width=w; canvas.height=h; ctx.drawImage(video,0,0,w,h); averageColor(); rafId=requestAnimationFrame(loop); }
+function averageColor(){ try{ const im=ctx.getImageData(0,0,canvas.width,canvas.height).data; let r=0,g=0,b=0,c=0; for(let i=0;i<im.length;i+=48){ r+=im[i]; g+=im[i+1]; b+=im[i+2]; c++; } r=Math.round(r/c); g=Math.round(g/c); b=Math.round(b/c); const hex='#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join(''); colorGuess.value=(r>g+40&&r>b+40?'Red':g>r+30&&g>b+20?'Green':b>r+30&&b>g+20?'Blue':'Gray/Silver')+' ('+hex+')'; }catch(e){} }
+async function doOCRFromCanvas(){ const blob=await new Promise(res=>canvas.toBlob(res,'image/jpeg',.9)); await runOCRBlob(blob); }
+async function runOCRBlob(blob){ toast('OCR 중…'); const worker=await Tesseract.createWorker('eng+kor'); const {data:{text}}=await worker.recognize(blob); await worker.terminate(); rawText.value=text.trim(); extractKeywords(); tryDecodeBarcodeFromBlob(blob); toast('OCR 완료'); }
+document.getElementById('btnSnap').onclick=doOCRFromCanvas;
+document.getElementById('file').addEventListener('change', async (e)=>{ const f=e.target.files?.[0]; if(!f) return; const url=URL.createObjectURL(f); const img=new Image(); img.src=url; await img.decode(); const w=canvas.clientWidth||640, h=Math.round(w*img.height/img.width); canvas.width=w; canvas.height=h; ctx.drawImage(img,0,0,w,h); averageColor(); await runOCRBlob(f); });
+function extractKeywords(){ const text=rawText.value; const upper=text.toUpperCase().replace(/[^A-Z0-9\-\_\/\.\s]/g,' '); const parts=upper.split(/\s+/); const tokens=new Set(); const patts=[/[A-Z]{2,}\-?\d{2,}[A-Z]*/g,/[A-Z]{1}\d{3,}[A-Z]{0,2}/g,/\d{3,}[A-Z]{1,3}\d*/g,/ST\d{6,}/g,/WDC|SEAGATE|SAMSUNG|DELL|HP|HITACHI|TOSHIBA|LG|SONY|APPLE|INTEL|AMD|NVIDIA|MICRON|KINGSTON|SANDISK/g,/SAS|SATA|NVME|PCIE|DDR\d|GB|TB|RPM|7\.2K|10K|15K/g]; for(const p of patts){ const m=upper.match(p); if(m) m.forEach(x=>tokens.add(x)); } for(const w of parts){ if(w.length>=2 && w.length<=22 && (/\d/.test(w) || (w.length>=3 && /^[A-Z]+$/.test(w)))) tokens.add(w); } tagBox.innerHTML=''; [...tokens].slice(0,30).forEach(t=>{ const el=document.createElement('span'); el.className='tag'; el.textContent=t; el.onclick=()=>{navigator.clipboard.writeText(t); toast('복사됨')}; tagBox.appendChild(el); }); const top=[...tokens].slice(0,6).join(' '); if(!document.getElementById('krTitle').value) document.getElementById('krTitle').value=top; if(!document.getElementById('enTitle').value) document.getElementById('enTitle').value=top; }
+async function tryDecodeBarcodeFromBlob(blob){ const url=URL.createObjectURL(blob); return new Promise((resolve)=>{ Quagga.decodeSingle({ src:url, numOfWorkers:0, inputStream:{size:800}, decoder:{readers:['ean_reader','ean_8_reader','code_128_reader','upc_reader','upc_e_reader']} }, (res)=>{ if(res && res.codeResult){ barcodeInput.value=res.codeResult.code; toast('바코드 감지: '+res.codeResult.code); resolve(res.codeResult.code);} else resolve(null); }); }); }
+document.getElementById('btnCopy').onclick=()=>{ navigator.clipboard.writeText(rawText.value||''); toast('텍스트 복사됨'); };
+document.getElementById('btnRefine').onclick=extractKeywords;
+document.getElementById('btnSearch').onclick=()=>{ const q=[document.getElementById('krTitle').value, document.getElementById('enTitle').value, ...[...tagBox.querySelectorAll('.tag')].slice(0,6).map(x=>x.textContent), barcodeInput.value].filter(Boolean).join(' '); const links=[`https://m.bunjang.co.kr/search/products?q=${encodeURIComponent(q)}`, `https://m.cafe.naver.com/ArticleSearchList.nhn?search.query=${encodeURIComponent(q)}`, `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}`, `https://www.google.com/search?q=${encodeURIComponent(q)}`]; window.open(links[2],'_blank'); setTimeout(()=>window.open(links[0],'_blank'),200); setTimeout(()=>window.open(links[3],'_blank'),400); };
+document.getElementById('btnTitle').onclick=()=>{ const tags=[...tagBox.querySelectorAll('.tag')].map(x=>x.textContent); const brand=tags.find(t=>/(SEAGATE|DELL|WDC|WD|SAMSUNG|HP|LG|SONY|TOSHIBA)/.test(t))||'Generic'; const model=tags.find(t=>/ST\d{6,}|[A-Z]{2,}\-?\d{3,}/.test(t))||''; const cap=tags.find(t=>/(TB|GB|7\.2K|10K|15K)/.test(t))||''; const title=`${brand} ${model} ${cap}`.trim().replace(/\s+/g,' '); document.getElementById('enTitle').value=title||tags.slice(0,5).join(' '); toast('eBay Title 생성 완료'); };
+document.getElementById('btnGen').onclick=()=>{ const enT=document.getElementById('enTitle').value||'Used item'; const krT=document.getElementById('krTitle').value||'중고 상품'; const color=colorGuess.value||'미상'; const bc=barcodeInput.value||'없음'; const kws=[...tagBox.querySelectorAll('.tag')].slice(0,12).map(x=>x.textContent).join(', '); document.getElementById('krDesc').value=`${krT}
+- 키워드: ${kws}
+- 색상: ${color}
+- 바코드: ${bc}
+- 상태: 중고, 작동여부 현장 확인 권장
+- 교환/환불: 불가(중고 특성)
 
-/* ----------------------- 1) 라이브 바코드 ----------------------- */
-const videoEl  = $('#video');
-const outBarcode = $('#outBarcode');
+실사진 참고 후 문의 주세요.`; document.getElementById('enDesc').value=`${enT}
+- Keywords: ${kws}
+- Color: ${color}
+- Barcode: ${bc}
+- Condition: Used. See photos for details.
+- No return/exchange.
 
-async function startScan(){
-  try{
-    setText($('#statusCam'), '카메라 초기화 중…');
-    await Quagga.init({
-      inputStream:{
-        name:"Live", type:"LiveStream", target:videoEl,
-        constraints:{facingMode:"environment", width:{ideal:1920}, height:{ideal:1080}}
-      },
-      locator:{patchSize:"large", halfSample:false},
-      numOfWorkers:0, frequency:5,
-      decoder:{readers:["ean_reader","ean_8_reader","code_128_reader","code_39_reader","upc_reader","upc_e_reader"]},
-      locate:true
-    }, err=>{ if(err){ alert("카메라 실패: "+err); return } Quagga.start(); setText($('#statusCam'),'스캔 중… 바코드를 프레임 중앙에 맞춰주세요') });
-
-    Quagga.offDetected();
-    Quagga.onDetected(res=>{
-      const code = res?.codeResult?.code;
-      if(!code) return;
-      outBarcode.value = code;
-      setText($('#statusCam'), '인식함: '+code);
-      // 연속 중복 방지
-      Quagga.pause(); setTimeout(()=>{try{Quagga.start()}catch(_){}} ,800);
-      // 바코드 숫자도 키워드로 추가
-      setKeywords(uniq([code, ...getKeywords()]));
-    })
-  }catch(e){
-    alert('스캔 시작 오류: '+e);
-  }
-}
-function stopScan(){ try{Quagga.stop()}catch(_){ } setText($('#statusCam'), '정지됨'); }
-
-$('#btnStart').onclick = startScan;
-$('#btnStop').onclick  = stopScan;
-$('#copyBarcode').onclick = ()=>copyText(outBarcode.value);
-
-/* ----------------------- 2) 사진에서 인식 ----------------------- */
-const imgPrev = $('#imgPrev');
-$('#imgFile').onchange = async (e)=>{
-  const f = e.target.files?.[0]; if(!f) return;
-  imgPrev.src = URL.createObjectURL(f);
-  await sleep(100);
-  const avg = avgColor(imgPrev);
-  $('#outColor').value = avg.name + (avg.rgb? ` (${avg.rgb})`:'');
-}
-
-$('#btnFromImg').onclick = async ()=>{
-  if(!imgPrev.src){ alert('사진을 먼저 선택/촬영하세요'); return }
-  // 2-1) 정지화상 바코드
-  setText($('#statusCam'),'사진 바코드 분석 중…');
-  try{
-    await new Promise((resolve)=>{
-      Quagga.decodeSingle({
-        src: imgPrev.src,
-        numOfWorkers:0,
-        inputStream:{size:800},
-        decoder:{readers:["ean_reader","ean_8_reader","code_128_reader","code_39_reader","upc_reader","upc_e_reader"]},
-        locate:true
-      }, (res)=>{
-        const code = res && res.codeResult && res.codeResult.code;
-        if(code){ outBarcode.value = code; setKeywords(uniq([code, ...getKeywords()])); }
-        resolve();
-      });
-    });
-  }catch(_){/* 무시 */}
-
-  // 2-2) OCR (라벨 텍스트 → 모델/부품번호 후보 뽑기)
-  setText($('#statusCam'),'OCR 인식 중…');
-  try{
-    const o = await Tesseract.recognize(imgPrev.src, 'eng', { logger: m=>{/* console.log(m) */} });
-    const raw = (o.data?.text||'')
-      .replace(/[|]/g,'I').replace(/[^\w\-\s./]/g,' ')
-      .split(/\s+/).map(s=>s.trim()).filter(Boolean);
-
-    // 모델/부품 번호처럼 보이는 패턴
-    const modelish = raw.filter(w=>{
-      if(w.length<4) return false;
-      if(/^\d{4,}$/.test(w)) return false; // 순수 숫자 제외(바코드랑 중복)
-      return /[A-Z].*\d|\d.*[A-Z]/.test(w); // 영문+숫자 혼용
-    });
-
-    // 상표/일반단어는 가볍게 필터링
-    const blacklist = ['SERIAL','MODEL','MADE','DATE','VOID','WARRANTY','LABEL','REMOVED','BROKEN','CERTIFIED','ENTERPRISE','PLUS','BY','THE','AND','WITH','FOR','OF'];
-    const cleaned = modelish
-      .map(w=>w.replace(/[().,:;'"`]/g,'').toUpperCase())
-      .filter(w=>w.length<=24 && !blacklist.includes(w));
-
-    // 최종 키워드 후보 세팅
-    setKeywords(uniq([ ...cleaned.slice(0,12), outBarcode.value || '' ]));
-    setText($('#statusCam'),'사진 인식 완료');
-  }catch(e){
-    setText($('#statusCam'),'OCR 실패'); console.warn(e);
-  }
-
-  // 2-3) 색상 추정(이미 선택 시 평균색 계산)
-  const avg = avgColor(imgPrev);
-  $('#outColor').value = avg.name + (avg.rgb? ` (${avg.rgb})`:'');
-};
-
-$('#copyKeywords').onclick = ()=>{
-  copyText(getKeywords().join(' '));
-};
-$('#clearKeywords').onclick = ()=> setKeywords([]);
-
-/* ----------------------- 3) 빠른 검색 링크 ----------------------- */
-$('#btnNaver').onclick   = ()=>openSearch('https://search.shopping.naver.com/search/all?query=');
-$('#btnBunjang').onclick = ()=>openSearch('https://m.bunjang.co.kr/search/products?q=');
-$('#btnEbay').onclick    = ()=>openSearch('https://www.ebay.com/sch/i.html?_nkw=');
-
-/* ----------------------- 4) 판매글 생성 ----------------------- */
-function makeTexts(){
-  const kws = getKeywords(); const kwLine = kws.join(' ');
-  const color = $('#outColor').value || 'Unknown';
-  const barcode = $('#outBarcode').value;
-  const memo = sanitize($('#memo').value);
-
-  // KR 제목 & 본문
-  const krTitle = sanitize([ kwLine || '상품', color ].join(' | '));
-  const krBody =
-`✅ 제품 정보
-- 주요 키워드: ${kwLine || '-'}
-- 색상/외관: ${color}
-- 바코드: ${barcode || '-'}
-
-✅ 상태/메모
-${memo || '- 사용감/상태를 적어주세요'}
-
-🧪 간단 테스트 후 판매하며, 직거래/택배 둘 다 가능해요.
-문의 주시면 실사진/추가정보 바로 드립니다.`;
-
-  // EN Title (eBay)
-  const enTitle = sanitize((kwLine || 'Item') + (color ? ` ${color}` : '')).slice(0,80);
-
-  return {krTitle, krBody, enTitle}
-}
-
-$('#btnMakeKorean').onclick = ()=>{
-  const {krTitle, krBody} = makeTexts();
-  $('#outKRTitle').value = krTitle;
-  $('#outKRBody').value  = krBody;
-};
-$('#btnMakeEbay').onclick = ()=>{
-  const {enTitle} = makeTexts();
-  $('#outENTitle').value = enTitle;
-};
-
-$$('button[data-copy]').forEach(btn=>{
-  btn.onclick=()=>{
-    const sel = btn.getAttribute('data-copy');
-    const v = $(sel)?.value || '';
-    copyText(v);
-    btn.textContent='복사됨';
-    setTimeout(()=>btn.textContent='복사',900);
-  }
-});
+Feel free to ask any questions.`; };
+document.getElementById('btnCopyKR').onclick=()=>{ navigator.clipboard.writeText(document.getElementById('krTitle').value+'\n\n'+document.getElementById('krDesc').value); toast('KR 복사 완료'); };
+document.getElementById('btnCopyEN').onclick=()=>{ navigator.clipboard.writeText(document.getElementById('enTitle').value+'\n\n'+document.getElementById('enDesc').value); toast('EN 복사 완료'); };
 </script>
-</body>
-</html>
+</body></html>
