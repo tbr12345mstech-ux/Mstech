@@ -1,67 +1,322 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>MSTECH 상품 인식 & 판매글</title>
-<style>
-body { background:#10131a; color:white; font-family:sans-serif; text-align:center; padding:20px; }
-button{ padding:12px 18px; border-radius:10px; border:none; font-size:18px; margin:10px; cursor:pointer; }
-#start{ background:#1de9b6; }
-#stop{ background:#37474f; color:white; }
-video{ width:90vw; max-width:420px; border-radius:12px; margin-top:15px; }
-input{ width:80%; padding:12px; margin-top:15px; border-radius:8px; border:none; font-size:16px; }
-</style>
-
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.0/umd/index.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MSTECH 상품 인식 & 판매글 (Full)</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0B132B">
+  <style>
+    :root{--bg:#0b132b;--panel:#1c2541;--muted:#3a506b;--accent:#13d8c3;--text:#e8f1ff;}
+    *{box-sizing:border-box;font-family:system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Apple SD Gothic Neo, sans-serif;}
+    body{margin:0;background:var(--bg);color:var(--text);}
+    .wrap{max-width:940px;margin:0 auto;padding:20px;}
+    h1{font-size:28px;margin:8px 0 16px}
+    .badge{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:#22304f;color:#b3c2db;font-size:12px;margin-left:6px}
+    .card{background:var(--panel);border:1px solid #253155;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1rem;border-radius:12px;border:0;background:var(--accent);color:#042f2e;font-weight:700;cursor:pointer}
+    .btn.secondary{background:#233456;color:#e8f1ff}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .col{flex:1 1 320px}
+    input, textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #334266;background:#0f1a32;color:#e8f1ff}
+    textarea{min-height:90px;resize:vertical}
+    .hint{font-size:12px;color:#9fb0c6;margin-top:6px}
+    video, canvas, img{width:100%;border-radius:12px;background:#000}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    .copy{margin-left:8px}
+    footer{opacity:.7;font-size:12px;margin:20px 0}
+    .pill{font-size:12px;background:#12203b;border:1px solid #2b3f61;border-radius:999px;padding:.3rem .6rem}
+    .stack{display:flex;gap:8px;flex-wrap:wrap}
+  </style>
 </head>
-
 <body>
+  <div class="wrap">
+    <h1>MSTECH 상품 인식 & 판매글 <span class="badge">OCR + 바코드 + eBay/번개장터</span> <span class="badge">오프라인 PWA</span></h1>
 
-<h2>MSTECH 상품 인식 & 판매글</h2>
+    <div class="card">
+      <div class="row">
+        <div class="col">
+          <button id="startCam" class="btn">📷 카메라 스캔 시작</button>
+          <button id="stopCam" class="btn secondary">정지</button>
+          <div class="hint">팁: 바코드를 화면 중앙에 두고 20~30cm 거리에서 1초간 고정</div>
+          <video id="video" playsinline muted></video>
+        </div>
+        <div class="col">
+          <label>바코드</label>
+          <div class="row">
+            <input id="barcodeOut" placeholder="자동 입력…" />
+            <button class="btn secondary copy" data-copy="barcodeOut">복사</button>
+          </div>
+          <div class="hint" id="scanStatus">대기 중…</div>
+          <div class="grid">
+            <label>사진 업로드/촬영(바코드+문자 인식)</label>
+            <input type="file" id="file" accept="image/*" capture="environment">
+            <img id="preview" alt="" />
+            <canvas id="canvas" hidden></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
 
-<button id="start">📷 카메라 스캔 시작</button>
-<button id="stop">정지</button>
+    <div class="card">
+      <h3>인식 결과</h3>
+      <div class="row">
+        <div class="col">
+          <label>예상 색상</label>
+          <input id="colorOut" placeholder="자동 감지…" />
+        </div>
+        <div class="col">
+          <label>모델/키워드 후보 (OCR 추출)</label>
+          <textarea id="candidates" placeholder="로고/문자 OCR 후보…"></textarea>
+        </div>
+      </div>
+      <div class="stack" style="margin-top:8px">
+        <span class="pill">실시간 바코드: ZXing</span>
+        <span class="pill">OCR: Tesseract.js (ko+eng)</span>
+      </div>
+    </div>
 
-<video id="preview" playsinline></video>
+    <div class="card">
+      <h3>판매 글 생성</h3>
+      <div class="row">
+        <div class="col">
+          <label>번개장터 제목</label>
+          <input id="krTitle">
+          <label>번개장터 본문</label>
+          <textarea id="krBody"></textarea>
+          <div class="row">
+            <button class="btn" id="genKR">번개장터 글 생성</button>
+            <button class="btn secondary copy" data-copy="krTitle">제목 복사</button>
+            <button class="btn secondary copy" data-copy="krBody">본문 복사</button>
+          </div>
+        </div>
+        <div class="col">
+          <label>eBay Title</label>
+          <input id="enTitle">
+          <label>eBay Description</label>
+          <textarea id="enDesc"></textarea>
+          <div class="row">
+            <button class="btn" id="genEN">eBay 텍스트 생성</button>
+            <button class="btn secondary copy" data-copy="enTitle">Title 복사</button>
+            <button class="btn secondary copy" data-copy="enDesc">Desc 복사</button>
+          </div>
+        </div>
+      </div>
+      <div class="hint">제목/본문은 바코드 + OCR 키워드로 자동 생성됩니다. 적절히 수동 보정하세요.</div>
+    </div>
 
-<input id="barcode" placeholder="바코드 자동 입력">
+    <footer>ⓒ MSTECH. 이 페이지는 오프라인에서도 동작합니다. 최초 접속 후 홈 화면에 추가해 사용하세요.</footer>
+  </div>
 
-<script>
-let codeReader;
-let stream;
+  <!-- libs via CDN -->
+  <script src="https://unpkg.com/@zxing/library@0.21.2"></script>
+  <script src="https://unpkg.com/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 
-async function startCamera(){
-  try{
-    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
-    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment" } });
-    const video = document.getElementById('preview');
-    video.srcObject = stream;
-    await video.play();
-
-    codeReader.decodeFromVideoDevice(null, video, (result, err)=>{
-      if(result){
-        document.getElementById("barcode").value = result.text;
-      }
+  <script>
+  // PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js');
     });
-  }catch(e){
-    alert("카메라 접근 권한을 허용해주세요.");
   }
-}
 
-function stopCamera(){
-  if(stream){
-    stream.getTracks().forEach(t=>t.stop());
+  const video = document.getElementById('video');
+  const startBtn = document.getElementById('startCam');
+  const stopBtn = document.getElementById('stopCam');
+  const statusEl = document.getElementById('scanStatus');
+  const barcodeOut = document.getElementById('barcodeOut');
+  const fileInput = document.getElementById('file');
+  const preview = document.getElementById('preview');
+  const canvas = document.getElementById('canvas');
+  const colorOut = document.getElementById('colorOut');
+  const candidates = document.getElementById('candidates');
+
+  let stream = null;
+  let reader = null;
+  let scanning = false;
+  let rafId = null;
+
+  function avgColorFromCanvas(ctx, w, h){
+    const d = ctx.getImageData(0,0,w,h).data;
+    let r=0,g=0,b=0,count=0;
+    for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; count++; }
+    r=Math.round(r/count); g=Math.round(g/count); b=Math.round(b/count);
+    // naive label
+    const max = Math.max(r,g,b);
+    let name = 'Unknown';
+    if(max===r && r>140 && g<120 && b<120) name='Red';
+    else if(max===g && g>140) name='Green';
+    else if(max===b && b>140) name='Blue';
+    else if(r>200&&g>200&&b>200) name='White';
+    else if(r<70&&g<70&&b<70) name='Black';
+    else if(r>180 && g>150 && b<100) name='Yellow/Gold';
+    colorOut.value = name;
+    return {r,g,b};
   }
-  if(codeReader){
-    codeReader.reset();
+
+  async function scanLoop(){
+    if(!scanning || !video.videoWidth) { rafId = requestAnimationFrame(scanLoop); return; }
+    const codeReader = reader;
+    try{
+      const result = await codeReader.decodeOnceFromVideoElement(video);
+      if(result && result.text){
+        barcodeOut.value = result.text;
+        statusEl.textContent = '바코드 인식 성공';
+        // stop after success but leave preview on
+        scanning = false;
+        if(stream){ stream.getTracks().forEach(t=>t.stop()); }
+      }
+    }catch(e){
+      // keep trying
+    }finally{
+      rafId = requestAnimationFrame(scanLoop);
+    }
   }
-}
 
-document.getElementById("start").onclick = startCamera;
-document.getElementById("stop").onclick = stopCamera;
-</script>
+  async function startCamera(){
+    try{
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); }
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio:false });
+      video.srcObject = stream;
+      await video.play();
+      // estimate color from live frame
+      const ctx = canvas.getContext('2d');
+      const tick = ()=>{
+        if(!scanning) return;
+        const w = video.videoWidth, h = video.videoHeight;
+        if(w && h){
+          canvas.width = w; canvas.height = h;
+          ctx.drawImage(video,0,0,w,h);
+          avgColorFromCanvas(ctx,w,h);
+        }
+        requestAnimationFrame(tick);
+      };
+      scanning = true;
+      if(!reader) reader = new ZXing.BrowserMultiFormatReader();
+      statusEl.textContent = '스캔 중… 바코드를 중앙에 두세요';
+      scanLoop();
+      tick();
+    }catch(err){
+      alert('카메라 접근 권한을 허용해주세요.\n설정 > Safari > 카메라 > 허용');
+      statusEl.textContent = '카메라 권한 필요';
+    }
+  }
 
+  function stopCamera(){
+    scanning = false;
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    if(rafId) cancelAnimationFrame(rafId);
+    statusEl.textContent = '정지';
+  }
+
+  startBtn.addEventListener('click', startCamera);
+  stopBtn.addEventListener('click', stopCamera);
+
+  // Upload & OCR
+  fileInput.addEventListener('change', async (e)=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const url = URL.createObjectURL(f);
+    preview.src = url;
+
+    // draw to canvas
+    await new Promise(r=>{ preview.onload=r; });
+    const w = preview.naturalWidth, h = preview.naturalHeight;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(preview,0,0,w,h);
+    avgColorFromCanvas(ctx,w,h);
+
+    // Try barcode decode from still
+    try{
+      const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+      const binarizer = new ZXing.Common.HybridBinarizer(luminanceSource);
+      const bitmap = new ZXing.BinaryBitmap(binarizer);
+      const hints = new Map();
+      const formats = [ ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.EAN_8, ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E ];
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+      const res = new ZXing.MultiFormatReader().decode(bitmap, hints);
+      if(res && res.text) barcodeOut.value = res.text;
+    }catch(_) {}
+
+    // OCR with ko+eng
+    candidates.value = '인식 중…';
+    try{
+      const worker = await Tesseract.createWorker('kor', 1);
+      await worker.loadLanguage('eng');
+      await worker.initialize('eng+kor');
+      const { data: { text } } = await worker.recognize(canvas);
+      await worker.terminate();
+      const cleaned = text.replace(/[\s]+/g,' ').trim();
+      candidates.value = cleaned || '(인식 결과 없음)';
+    }catch(err){
+      candidates.value = '(OCR 오류)';
+    }
+  });
+
+  // Copy helper
+  document.querySelectorAll('.copy').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-copy');
+      const el = document.getElementById(id);
+      el.select(); el.setSelectionRange(0,99999);
+      document.execCommand('copy');
+      btn.textContent = '복사됨';
+      setTimeout(()=>btn.textContent='복사',1200);
+    });
+  });
+
+  // Listing generators
+  function pickKeywords(base, extra){
+    const words = (base+' '+extra).toLowerCase().split(/[^a-z0-9가-힣\.\-]+/).filter(v=>v && v.length>1);
+    // unique and truncate
+    const seen = new Set(); const out=[];
+    for(const w of words){ if(!seen.has(w)){ seen.add(w); out.push(w); } if(out.length>16) break; }
+    return out;
+  }
+
+  function krSentence(){
+    const code = barcodeOut.value || '';
+    const cand = candidates.value || '';
+    const color = colorOut.value || '기본';
+    const kws = pickKeywords(cand, code).slice(0,10);
+    const title = `${(kws[0]||'미확인 제품')} / ${color} / 바코드:${code||'미확인'}`;
+    const body = [
+      `• 상태: 중고 / 사진 참고`,
+      `• 색상: ${color}`,
+      code ? `• 바코드(EAN/UPC): ${code}` : null,
+      kws.length? `• 키워드: ${kws.join(', ')}` : null,
+      `—`,
+      `직거래 가능 · 택배 가능 · 문의 환영`
+    ].filter(Boolean).join('\n');
+    return {title, body};
+  }
+
+  function enSentence(){
+    const code = barcodeOut.value || '';
+    const cand = candidates.value || '';
+    const color = colorOut.value || 'Default';
+    const kws = pickKeywords(cand, code).slice(0,12);
+    const title = `${(kws[0]||'Unknown Item')} ${color} ${code?('EAN/UPC '+code):''}`.trim();
+    const desc = [
+      `Condition: Used (see photos)`,
+      `Color: ${color}`,
+      code ? `Barcode: ${code}` : null,
+      kws.length? `Keywords: ${kws.join(', ')}` : null
+    ].filter(Boolean).join('\n');
+    return {title, desc};
+  }
+
+  document.getElementById('genKR').addEventListener('click', ()=>{
+    const {title, body} = krSentence();
+    document.getElementById('krTitle').value = title;
+    document.getElementById('krBody').value = body;
+  });
+  document.getElementById('genEN').addEventListener('click', ()=>{
+    const {title, desc} = enSentence();
+    document.getElementById('enTitle').value = title;
+    document.getElementById('enDesc').value = desc;
+  });
+  </script>
 </body>
 </html>
