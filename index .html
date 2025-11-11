@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>바코드 스캐너 (카메라 + 자동 입력)</title>
+<style>
+  :root { --bg:#0b1220; --panel:#121a2b; --accent:#22d3ee; --text:#e5e7eb; --muted:#94a3b8; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,Arial,sans-serif;line-height:1.4}
+  header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#0b1220,#0b1220cc 70%,transparent);padding:16px 16px 8px}
+  h1{margin:0 0 6px;font-size:20px}
+  .tip{color:var(--muted);font-size:13px}
+  main{padding:12px 12px 48px;max-width:820px;margin:0 auto}
+  .panel{background:var(--panel);border:1px solid #1f2a44;border-radius:14px;padding:12px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  button,.select{background:#1b2540;border:1px solid #2a3b6a;color:var(--text);border-radius:12px;padding:12px 14px;font-size:16px;cursor:pointer}
+  button:disabled{opacity:.55;cursor:not-allowed}
+  .primary{background:linear-gradient(90deg,#2563eb,#22d3ee);border-color:#22d3ee;color:white}
+  .danger{background:#7c2d12;border-color:#9a3412}
+  .ghost{background:#111827;border-color:#374151}
+  .field{display:flex;gap:8px;align-items:center;margin-top:12px}
+  input[type=text]{flex:1;min-width:0;background:#0f172a;border:1px solid #24304d;color:var(--text);padding:12px 14px;border-radius:12px;font-size:16px}
+  .video-wrap{position:relative;border-radius:14px;overflow:hidden;background:black}
+  video{width:100%;height:auto;display:block}
+  canvas{display:none}
+  .aim{position:absolute;inset:15%;border:2px solid rgba(34,211,238,.85);border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.25);pointer-events:none}
+  .status{margin-top:8px;color:var(--muted);font-size:13px}
+  .badge{display:inline-block;background:#0ea5e9;color:white;border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px}
+  footer{position:fixed;left:0;right:0;bottom:0;padding:12px;background:linear-gradient(0deg,#0b1220,#0b1220cc 70%,transparent);}
+  .grid{display:grid;grid-template-columns:1fr auto;gap:10px}
+</style>
+</head>
+<body>
+  <header>
+    <h1>바코드 스캐너</h1>
+    <div class="tip">팁: 바코드를 화면 중앙에 두고 20~30cm 거리에서 1초간 고정. 반사되면 손으로 그림자 만들어 주세요.</div>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="row" style="gap:8px">
+        <button id="btnStart" class="primary">카메라 스캔 시작</button>
+        <button id="btnStop" class="danger" disabled>정지</button>
+        <button id="btnTorch" class="ghost" disabled>손전등</button>
+        <select id="selCamera" class="select" title="카메라 선택"></select>
+        <span id="tech" class="badge">-</span>
+      </div>
+      <div class="video-wrap" style="margin-top:10px">
+        <video id="video" playsinline></video>
+        <div class="aim"></div>
+      </div>
+      <canvas id="canvas"></canvas>
+      <div class="status" id="status">대기중…</div>
+      <div class="field">
+        <input id="out" type="text" placeholder="자동 입력…" inputmode="numeric" autocomplete="off" />
+        <button id="btnCopy">복사</button>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="grid">
+      <div class="tip">iPhone Safari/Chrome 사용 가능. 권한 허용 후 뒷면 카메라를 선택하세요.</div>
+      <div>
+        <button id="btnBeep" class="ghost">테스트음</button>
+      </div>
+    </div>
+  </footer>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const video = $("#video");
+  const canvas = $("#canvas");
+  const ctx = canvas.getContext("2d");
+  const out = $("#out");
+  const statusEl = $("#status");
+  const btnStart = $("#btnStart");
+  const btnStop  = $("#btnStop");
+  const btnTorch = $("#btnTorch");
+  const btnCopy  = $("#btnCopy");
+  const btnBeep  = $("#btnBeep");
+  const selCamera = $("#selCamera");
+  const techBadge = $("#tech");
+  let stream = null;
+  let track = null;
+  let torchOn = false;
+  let using = "none"; // 'barcode-detector' | 'quagga'
+  let running = false;
+  let quaggaReady = false;
+
+  const beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function beep() {
+    const o = beepCtx.createOscillator();
+    const g = beepCtx.createGain();
+    o.connect(g); g.connect(beepCtx.destination);
+    o.frequency.value = 880; // A5
+    g.gain.setValueAtTime(0.001, beepCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.4, beepCtx.currentTime + 0.01);
+    o.start();
+    setTimeout(()=>{
+      g.gain.exponentialRampToValueAtTime(0.001, beepCtx.currentTime + 0.05);
+      o.stop(beepCtx.currentTime + 0.06);
+    }, 40);
+  }
+  btnBeep.addEventListener("click", beep);
+
+  async function listCameras() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const vids = devices.filter(d => d.kind === "videoinput");
+    selCamera.innerHTML = "";
+    vids.forEach((d, i) => {
+      const opt = document.createElement("option");
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `카메라 ${i+1}`;
+      selCamera.appendChild(opt);
+    });
+  }
+
+  async function start() {
+    if (running) return;
+    running = true;
+    out.value = "";
+    setStatus("카메라 시작중…");
+    btnStart.disabled = true;
+    btnStop.disabled = false;
+
+    const deviceId = selCamera.value || undefined;
+    const constraints = {
+      audio: false,
+      video: {
+        deviceId: deviceId ? { exact: deviceId } : undefined,
+        facingMode: deviceId ? undefined : { ideal: "environment" },
+        width: { ideal: 1280 },
+        height:{ ideal: 720 }
+      }
+    };
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+    await video.play();
+    track = stream.getVideoTracks()[0];
+
+    // Torch availability
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    if (caps.torch) { btnTorch.disabled = false; } else { btnTorch.disabled = true; }
+
+    // Pick engine
+    if ("BarcodeDetector" in window) {
+      using = "barcode-detector";
+      techBadge.textContent = "BarcodeDetector";
+      setStatus("인식 준비 완료 (BarcodeDetector). 바코드를 사각형 중앙에 맞추세요.");
+      scanLoopBD();
+    } else {
+      using = "quagga";
+      techBadge.textContent = "Quagga (CDN)";
+      setStatus("엔진 로딩중… (Quagga)");
+      await ensureQuagga();
+      initQuagga();
+    }
+  }
+
+  async function stop() {
+    running = false;
+    if (track) {
+      try { await track.applyConstraints({ advanced: [{ torch: false }] }); } catch {}
+    }
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+    }
+    stream = track = null;
+    btnStart.disabled = false;
+    btnStop.disabled = true;
+    btnTorch.disabled = true;
+    setStatus("정지됨");
+    if (using === "quagga" && window.Quagga) {
+      try { window.Quagga.stop(); } catch {}
+    }
+  }
+
+  btnStart.addEventListener("click", start);
+  btnStop.addEventListener("click", stop);
+  btnTorch.addEventListener("click", async () => {
+    if (!track) return;
+    torchOn = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+      btnTorch.textContent = torchOn ? "손전등 끄기" : "손전등";
+    } catch (e) {
+      console.warn("Torch not supported", e);
+      setStatus("손전등을 지원하지 않는 기기입니다.");
+    }
+  });
+
+  btnCopy.addEventListener("click", async () => {
+    out.select();
+    try{
+      await navigator.clipboard.writeText(out.value);
+      flashStatus("복사됨 ✅");
+    }catch{
+      document.execCommand("copy");
+      flashStatus("복사됨 ✅");
+    }
+  });
+
+  function setStatus(s){ statusEl.textContent = s; }
+  function flashStatus(s){
+    setStatus(s);
+    setTimeout(()=> setStatus(using === "barcode-detector" ? "스캔중…" : "스캔중… (Quagga)"), 1200);
+  }
+
+  // BarcodeDetector loop
+  async function scanLoopBD(){
+    if (!running) return;
+    try {
+      const det = new window.BarcodeDetector({ formats: ["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf","codabar","qr_code"] });
+      loop();
+      async function loop(){
+        if (!running) return;
+        // draw a frame to canvas for potential future processing (kept hidden)
+        const vw = video.videoWidth, vh = video.videoHeight;
+        if (vw && vh) {
+          canvas.width = vw; canvas.height = vh;
+          ctx.drawImage(video, 0, 0, vw, vh);
+          const bitmap = await createImageBitmap(canvas);
+          const codes = await det.detect(bitmap);
+          if (codes && codes.length) {
+            const best = codes[0];
+            if (best.rawValue) {
+              onDetected(best.rawValue);
+            }
+          }
+        }
+        requestAnimationFrame(loop);
+      }
+    } catch (e) {
+      console.warn("BarcodeDetector failed, fallback to Quagga", e);
+      using = "quagga";
+      techBadge.textContent = "Quagga (CDN)";
+      await ensureQuagga();
+      initQuagga();
+    }
+  }
+
+  function onDetected(code){
+    if (!code) return;
+    if (out.value === code) return; // avoid repeats
+    out.value = code;
+    beep();
+    flashStatus(`감지됨: ${code}`);
+  }
+
+  // Quagga fallback
+  async function ensureQuagga(){
+    if (quaggaReady) return;
+    await new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js";
+      s.onload = () => res();
+      s.onerror = () => rej(new Error("Quagga CDN 로드 실패"));
+      document.head.appendChild(s);
+    });
+    quaggaReady = true;
+  }
+
+  function initQuagga(){
+    const vw = video.videoWidth || 1280;
+    const vh = video.videoHeight || 720;
+    const constraints = { width: vw, height: vh };
+    window.Quagga.init({
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: video.parentElement,
+        constraints: {
+          facingMode: "environment"
+        }
+      },
+      decoder: {
+        readers: ["ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader","code_39_reader","interleaved_2_of_5_reader","codabar_reader"]
+      },
+      locate: true
+    }, (err) => {
+      if (err) {
+        console.error(err);
+        setStatus("카메라 초기화 실패: 권한과 HTTPS 도메인을 확인하세요.");
+        return;
+      }
+      setStatus("인식 준비 완료 (Quagga). 바코드를 중앙에 맞추세요.");
+      window.Quagga.start();
+      window.Quagga.onDetected(result => {
+        const code = result?.codeResult?.code;
+        if (code) onDetected(code);
+      });
+    });
+  }
+
+  // initialize
+  (async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({video:true}); // prime permission for labels
+    } catch {}
+    await listCameras();
+    techBadge.textContent = ("BarcodeDetector" in window) ? "BarcodeDetector" : "Quagga (CDN)";
+    setStatus("준비됨. '카메라 스캔 시작'을 누르세요.");
+  })();
+})();
+</script>
+</body>
+</html>
