@@ -187,6 +187,38 @@ async function startCamera(){
 
     // Quagga 시작
     Quagga.init({
+  inputStream: {
+    name: "Live",
+    type: "LiveStream",
+    target: document.querySelector("#video"),
+    constraints: {
+      facingMode: "environment",
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    }
+  },
+  locator: { patchSize: "large", halfSample: false },
+  numOfWorkers: 0, // iPhone Safari 성능 보완
+  frequency: 5,
+  decoder: {
+    readers: [
+      "ean_reader",
+      "ean_8_reader",
+      "code_128_reader",
+      "code_39_reader",
+      "upc_reader",
+      "upc_e_reader"
+    ]
+  }
+}, err => {
+  if (err) {
+    console.error(err);
+    alert("카메라 초기화 실패");
+    return;
+  }
+  Quagga.start();
+});
+Quagga.init({
       inputStream:{
         name:"Live", type:"LiveStream", target:video,
         constraints:{facingMode:"environment"}
